@@ -18,7 +18,7 @@ var runCmd = &cobra.Command{
 	Short: "Runs a containers",
 	Args:  cobra.MinimumNArgs(1),
 	Run: func(cmd *cobra.Command, args []string) {
-		slog.Debug("Running \"%v\" with args \"%v\"", args[0], args[1:])
+		slog.Debug("Running command", "cmd", args)
 		c := exec.Command(args[0], args[1:]...)
 		out, err := c.Output()
 		if err != nil {
