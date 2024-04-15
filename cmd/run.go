@@ -7,10 +7,13 @@ import (
 	"fmt"
 	"log"
 	"log/slog"
+	"os"
 	"os/exec"
 
 	"github.com/spf13/cobra"
 )
+
+var envVariables []string
 
 // runCmd represents the run command
 var runCmd = &cobra.Command{
@@ -19,7 +22,12 @@ var runCmd = &cobra.Command{
 	Args:  cobra.MinimumNArgs(1),
 	Run: func(cmd *cobra.Command, args []string) {
 		slog.Debug("Running command", "cmd", args)
+		slog.Debug("Environment Variables", "EnvVars", envVariables)
 		c := exec.Command(args[0], args[1:]...)
+		c.Env = os.Environ()
+		for _, entry := range envVariables {
+			c.Env = append(c.Env, entry)
+		}
 		out, err := c.Output()
 		if err != nil {
 			log.Fatal(err)
@@ -30,7 +38,7 @@ var runCmd = &cobra.Command{
 
 func init() {
 	rootCmd.AddCommand(runCmd)
-
+	runCmd.Flags().StringArrayVarP(&envVariables, "env", "e", nil, "Sets environment variables. It can be repeated")
 	// Here you will define your flags and configuration settings.
 
 	// Cobra supports Persistent Flags which will work for this command
