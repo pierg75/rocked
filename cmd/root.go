@@ -4,14 +4,9 @@ Copyright © 2024 Pierguido Lambri <plambri@redhat.com>
 package cmd
 
 import (
-	"log/slog"
 	"os"
 
 	"github.com/spf13/cobra"
-)
-
-var (
-	Verbose bool
 )
 
 // rootCmd represents the base command when called without any subcommands
@@ -19,14 +14,6 @@ var rootCmd = &cobra.Command{
 	Use:   "rocked",
 	Short: "Handles containers",
 	Long:  `A simple utility to handle container.`,
-	PersistentPreRun: func(cmd *cobra.Command, args []string) {
-		if Verbose {
-			var programLevel = new(slog.LevelVar)
-			h := slog.NewJSONHandler(os.Stderr, &slog.HandlerOptions{Level: programLevel})
-			slog.SetDefault(slog.New(h))
-			programLevel.Set(slog.LevelDebug)
-		}
-	},
 	// Uncomment the following line if your bare application
 	// has an action associated with it:
 	// Run: func(cmd *cobra.Command, args []string) { },
@@ -51,5 +38,5 @@ func init() {
 
 	// Cobra also supports local flags, which will only run
 	// when this action is called directly.
-	rootCmd.PersistentFlags().BoolVarP(&Verbose, "verbose", "v", false, "verbose output")
+	rootCmd.Flags().BoolP("toggle", "t", false, "Help message for toggle")
 }

@@ -1,44 +1,52 @@
 /*
-Copyright © 2024 Pierguido Lambri <plambri@redhat.com>
+Copyright © 2024 NAME HERE <EMAIL ADDRESS>
 */
 package cmd
 
 import (
 	"fmt"
 	"log"
-	"log/slog"
 	"os"
-	"os/exec"
+	"syscall"
 
 	"github.com/spf13/cobra"
 )
 
-var envVariables []string
-
 // runCmd represents the run command
 var runCmd = &cobra.Command{
-	Use:   "run [command]",
-	Short: "Runs a containers",
-	Args:  cobra.MinimumNArgs(1),
+	Use:   "run",
+	Short: "Runs a process",
 	Run: func(cmd *cobra.Command, args []string) {
-		slog.Debug("Running command", "cmd", args)
-		slog.Debug("Environment Variables", "EnvVars", envVariables)
-		c := exec.Command(args[0], args[1:]...)
-		c.Env = os.Environ()
-		for _, entry := range envVariables {
-			c.Env = append(c.Env, entry)
+		var wstatus syscall.WaitStatus
+		ppid := os.Getpid()
+		fmt.Printf("go pid:%v user:%v\n", ppid, os.Getuid())
+		fmt.Printf("Forking...\n")
+		attr := syscall.ProcAttr{
+			Dir:   "/tmp",
+			Env:   os.Environ(),
+			Files: []uintptr{uintptr(syscall.Stdin), uintptr(syscall.Stdout), uintptr(syscall.Stderr)},
+			Sys:   nil,
 		}
-		out, err := c.Output()
+		pid, err := syscall.ForkExec(args[0], args[1:], &attr)
 		if err != nil {
 			log.Fatal(err)
 		}
-		fmt.Print(string(out))
+		_, err = syscall.Wait4(pid, &wstatus, 0, nil)
+		for syscall.EINTR == err {
+			_, err = syscall.Wait4(pid, &wstatus, 0, nil)
+		}
+		if pid != ppid {
+			fmt.Printf("child pid:%v\n", pid)
+			//fmt.Printf("child pid:%v attr:%#v\n", pid, attr)
+		} else {
+			fmt.Printf("parent pid:%v user:%v\n", os.Getpid(), os.Getuid())
+		}
 	},
 }
 
 func init() {
 	rootCmd.AddCommand(runCmd)
-	runCmd.Flags().StringArrayVarP(&envVariables, "env", "e", nil, "Sets environment variables. It can be repeated")
+
 	// Here you will define your flags and configuration settings.
 
 	// Cobra supports Persistent Flags which will work for this command
