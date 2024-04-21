@@ -22,13 +22,9 @@ var runCmd = &cobra.Command{
 			fmt.Printf("You need to specify a program to run\n")
 			return
 		}
-		var exeargs []string
-		if len(args) > 1 {
-			exeargs = args[1:]
-		}
 		a := ForkExecArgs{
 			exe:     args[0],
-			exeargs: exeargs,
+			exeargs: args,
 		}
 		pid, err := ForkExec(&a)
 		if err != 0 {
