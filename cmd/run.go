@@ -1,13 +1,11 @@
 /*
-Copyright © 2024 NAME HERE <EMAIL ADDRESS>
+Copyright © 2024 Pierguido Lambri <olambri@redhat.com>
 */
 package cmd
 
 import (
 	"fmt"
-	"log"
 	"os"
-	"syscall"
 
 	"github.com/spf13/cobra"
 )
@@ -17,30 +15,27 @@ var runCmd = &cobra.Command{
 	Use:   "run",
 	Short: "Runs a process",
 	Run: func(cmd *cobra.Command, args []string) {
-		var wstatus syscall.WaitStatus
 		ppid := os.Getpid()
 		fmt.Printf("go pid:%v user:%v\n", ppid, os.Getuid())
 		fmt.Printf("Forking...\n")
-		attr := syscall.ProcAttr{
-			Dir:   "/tmp",
-			Env:   os.Environ(),
-			Files: []uintptr{uintptr(syscall.Stdin), uintptr(syscall.Stdout), uintptr(syscall.Stderr)},
-			Sys:   nil,
+		if len(args) == 0 {
+			fmt.Printf("You need to specify a program to run\n")
+			return
 		}
-		pid, err := syscall.ForkExec(args[0], args[1:], &attr)
-		if err != nil {
-			log.Fatal(err)
+		var exeargs []string
+		if len(args) > 1 {
+			exeargs = args[1:]
 		}
-		_, err = syscall.Wait4(pid, &wstatus, 0, nil)
-		for syscall.EINTR == err {
-			_, err = syscall.Wait4(pid, &wstatus, 0, nil)
+		a := ForkExecArgs{
+			exe:     args[0],
+			exeargs: exeargs,
 		}
-		if pid != ppid {
-			fmt.Printf("child pid:%v\n", pid)
-			//fmt.Printf("child pid:%v attr:%#v\n", pid, attr)
-		} else {
-			fmt.Printf("parent pid:%v user:%v\n", os.Getpid(), os.Getuid())
+		pid, err := ForkExec(&a)
+		if err != 0 {
+			fmt.Printf("Error: %v", int(err))
+			return
 		}
+		Wait(int(pid))
 	},
 }
 
