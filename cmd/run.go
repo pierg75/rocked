@@ -10,6 +10,8 @@ import (
 	"github.com/spf13/cobra"
 )
 
+var envVariables []string
+
 // runCmd represents the run command
 var runCmd = &cobra.Command{
 	Use:   "run",
@@ -26,6 +28,10 @@ var runCmd = &cobra.Command{
 			exe:     args[0],
 			exeargs: args,
 		}
+		a.env = os.Environ()
+		for _, entry := range envVariables {
+			a.env = append(a.env, entry)
+		}
 		pid, err := ForkExec(&a)
 		if err != 0 {
 			fmt.Printf("Error: %v", int(err))
@@ -37,6 +43,7 @@ var runCmd = &cobra.Command{
 
 func init() {
 	rootCmd.AddCommand(runCmd)
+	runCmd.Flags().StringArrayVarP(&envVariables, "env", "e", nil, "Sets environment variables. It can be repeated")
 
 	// Here you will define your flags and configuration settings.
 

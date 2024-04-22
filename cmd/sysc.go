@@ -36,6 +36,7 @@ type ForkExecArgs struct {
 	cloneflags int
 	exe        string
 	exeargs    []string
+	env        []string
 }
 
 func ForkExec(args *ForkExecArgs) (p uintptr, err syscall.Errno) {
@@ -47,6 +48,9 @@ func ForkExec(args *ForkExecArgs) (p uintptr, err syscall.Errno) {
 			flags:      uint64(args.cloneflags),
 			exitSignal: uint64(syscall.SIGCHLD),
 		}
+	}
+	if args.env == nil {
+		args.env = os.Environ()
 	}
 	pid, _, error := syscall.RawSyscall(CLONE3, uintptr(unsafe.Pointer(args.cloneargs)), unsafe.Sizeof(*args.cloneargs), 0)
 	if error != 0 {
@@ -66,8 +70,7 @@ func ForkExec(args *ForkExecArgs) (p uintptr, err syscall.Errno) {
 		if e != nil {
 			log.Fatal("Error converting arguments to pointer")
 		}
-		env := os.Environ()
-		envlp, e := syscall.SlicePtrFromStrings(env)
+		envlp, e := syscall.SlicePtrFromStrings(args.env)
 		//fmt.Printf(" envlp:%v\n", envlp)
 		if e != nil {
 			log.Fatal("Error converting arguments to pointer")
