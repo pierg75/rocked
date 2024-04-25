@@ -4,8 +4,8 @@ Copyright © 2024 Pierguido Lambri <plambri@redhat.com>
 package cmd
 
 import (
-	"fmt"
 	"log"
+	"log/slog"
 	"os"
 	"syscall"
 	"unsafe"
@@ -54,24 +54,21 @@ func ForkExec(args *ForkExecArgs) (p uintptr, err syscall.Errno) {
 	}
 	pid, _, error := syscall.RawSyscall(CLONE3, uintptr(unsafe.Pointer(args.cloneargs)), unsafe.Sizeof(*args.cloneargs), 0)
 	if error != 0 {
-		fmt.Printf("Error cloning: %v", error)
+		slog.Debug("Error cloning: %v", error)
 		return pid, err
 	}
 	if int(pid) == 0 {
-		fmt.Printf("Child\n")
-		fmt.Printf(" fork pid:%v, OS pid:%v\n", pid, os.Getpid())
-		fmt.Printf(" run %v with options %v\n", args.exe, args.exeargs)
+		slog.Debug("Child", "pid", pid, "pid thread", os.Getpid())
+		slog.Debug("Child", "exec", args.exe, "options", args.exeargs)
 		arg0p, e := syscall.BytePtrFromString(args.exe)
 		if e != nil {
 			log.Fatal("Error converting process name to pointer")
 		}
 		arglp, e := syscall.SlicePtrFromStrings(args.exeargs)
-		//fmt.Printf(" arglp:%v\n", arglp)
 		if e != nil {
 			log.Fatal("Error converting arguments to pointer")
 		}
 		envlp, e := syscall.SlicePtrFromStrings(args.env)
-		//fmt.Printf(" envlp:%v\n", envlp)
 		if e != nil {
 			log.Fatal("Error converting arguments to pointer")
 		}
@@ -81,8 +78,7 @@ func ForkExec(args *ForkExecArgs) (p uintptr, err syscall.Errno) {
 		}
 		return pid, syscall.Errno(int(error))
 	} else {
-		fmt.Printf("Parent\n")
-		fmt.Printf(" fork pid:%v, OS pid:%v\n", pid, os.Getpid())
+		slog.Debug("Parent", "child pid", pid, "pid thread", os.Getpid())
 		return pid, 0
 	}
 }
@@ -91,7 +87,7 @@ func Wait(pid int) (status int) {
 	var s int
 	_, _, err := syscall.RawSyscall(WAIT4, uintptr(pid), uintptr(s), 0)
 	if err != 0 {
-		fmt.Printf("Error waiting: %v", err)
+		slog.Debug("wait4", "error", err)
 	}
 	return s
 }

@@ -8,9 +8,12 @@ import (
 	"os"
 
 	"github.com/spf13/cobra"
+	"log/slog"
 )
 
-var envVariables []string
+var (
+	envVariables []string
+)
 
 // runCmd represents the run command
 var runCmd = &cobra.Command{
@@ -18,8 +21,7 @@ var runCmd = &cobra.Command{
 	Short: "Runs a process",
 	Run: func(cmd *cobra.Command, args []string) {
 		ppid := os.Getpid()
-		fmt.Printf("go pid:%v user:%v\n", ppid, os.Getuid())
-		fmt.Printf("Forking...\n")
+		slog.Debug("Forking", "pid thread", ppid, "user", os.Getuid())
 		if len(args) == 0 {
 			fmt.Printf("You need to specify a program to run\n")
 			return
@@ -37,6 +39,7 @@ var runCmd = &cobra.Command{
 			fmt.Printf("Error: %v", int(err))
 			return
 		}
+		slog.Debug("Return from fork", "Child pid", pid)
 		Wait(int(pid))
 	},
 }
