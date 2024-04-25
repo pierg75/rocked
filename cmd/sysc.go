@@ -4,6 +4,7 @@ Copyright © 2024 Pierguido Lambri <plambri@redhat.com>
 package cmd
 
 import (
+	"fmt"
 	"log"
 	"log/slog"
 	"os"
@@ -54,7 +55,7 @@ func ForkExec(args *ForkExecArgs) (p uintptr, err syscall.Errno) {
 	}
 	pid, _, error := syscall.RawSyscall(CLONE3, uintptr(unsafe.Pointer(args.cloneargs)), unsafe.Sizeof(*args.cloneargs), 0)
 	if error != 0 {
-		slog.Debug("Error cloning: %v", error)
+		fmt.Printf("Error cloning: %v\n", error)
 		return pid, err
 	}
 	if int(pid) == 0 {
