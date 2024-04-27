@@ -5,28 +5,34 @@ package cmd
 
 import (
 	"fmt"
+	"log"
 	"os"
 
-	"github.com/spf13/cobra"
 	"log/slog"
+
+	"github.com/spf13/cobra"
 )
 
 var (
 	envVariables []string
 )
 
-// runCmd represents the run command
-var runCmd = &cobra.Command{
-	Use:   "run",
-	Short: "Runs a process",
-	Run: func(cmd *cobra.Command, args []string) {
-		ppid := os.Getpid()
-		slog.Debug("Forking", "pid thread", ppid, "user", os.Getuid())
-		if len(args) == 0 {
-			fmt.Printf("You need to specify a program to run\n")
-			return
-		}
-		a := ForkExecArgs{
+func run(args []string) {
+	ppid := os.Getpid()
+	slog.Debug("Forking", "pid thread", ppid, "user", os.Getuid())
+	if len(args) == 0 {
+		fmt.Printf("You need to specify a program to run\n")
+		return
+	}
+	pid, err := Fork(nil)
+	if err != 0 {
+		fmt.Printf("Error forking: %v", int(err))
+		return
+	}
+	if int(pid) == 0 {
+		slog.Debug("Child", "pid", pid, "pid thread", os.Getpid(), "pid parent", os.Getppid())
+		slog.Debug("Child", "exec", args[0], "options", args)
+		a := ExecArgs{
 			Exe:     args[0],
 			Exeargs: args,
 		}
@@ -34,13 +40,23 @@ var runCmd = &cobra.Command{
 		for _, entry := range envVariables {
 			a.Env = append(a.Env, entry)
 		}
-		pid, err := ForkExec(&a)
+		err := Exec(&a)
 		if err != 0 {
-			fmt.Printf("Error: %v", int(err))
-			return
+			log.Fatal("Error executing ", args[0])
 		}
-		slog.Debug("Return from fork", "Child pid", pid)
+	} else {
+		slog.Debug("Parent", "child pid", pid, "pid thread", os.Getpid())
 		Wait(int(pid))
+	}
+	return
+}
+
+// runCmd represents the run command
+var runCmd = &cobra.Command{
+	Use:   "run",
+	Short: "Runs a process",
+	Run: func(cmd *cobra.Command, args []string) {
+		run(args)
 	},
 }
 
