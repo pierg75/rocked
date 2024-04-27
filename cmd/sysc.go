@@ -75,9 +75,9 @@ func ForkExec(args *ForkExecArgs) (p uintptr, err syscall.Errno) {
 		}
 		_, _, error = syscall.RawSyscall(EXECVE, uintptr(unsafe.Pointer(arg0p)), uintptr(unsafe.Pointer(&arglp[0])), uintptr(unsafe.Pointer(&envlp[0])))
 		if error != 0 {
-			log.Fatal("** Error calling execv")
+			return pid, error
 		}
-		return pid, syscall.Errno(int(error))
+		return pid, syscall.Errno(0)
 	} else {
 		slog.Debug("Parent", "child pid", pid, "pid thread", os.Getpid())
 		return pid, 0
