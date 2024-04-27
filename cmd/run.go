@@ -27,12 +27,12 @@ var runCmd = &cobra.Command{
 			return
 		}
 		a := ForkExecArgs{
-			exe:     args[0],
-			exeargs: args,
+			Exe:     args[0],
+			Exeargs: args,
 		}
-		a.env = os.Environ()
+		a.Env = os.Environ()
 		for _, entry := range envVariables {
-			a.env = append(a.env, entry)
+			a.Env = append(a.Env, entry)
 		}
 		pid, err := ForkExec(&a)
 		if err != 0 {

@@ -33,43 +33,43 @@ type cloneArgs struct {
 }
 
 type ForkExecArgs struct {
-	cloneargs  *cloneArgs
-	cloneflags int
-	exe        string
-	exeargs    []string
-	env        []string
+	Cloneargs  *cloneArgs
+	Cloneflags int
+	Exe        string
+	Exeargs    []string
+	Env        []string
 }
 
 func ForkExec(args *ForkExecArgs) (p uintptr, err syscall.Errno) {
-	if args.cloneflags == 0 {
-		args.cloneflags = syscall.CLONE_VFORK | syscall.CLONE_FILES
+	if args.Cloneflags == 0 {
+		args.Cloneflags = syscall.CLONE_VFORK | syscall.CLONE_FILES
 	}
-	if args.cloneargs == nil {
-		args.cloneargs = &cloneArgs{
-			flags:      uint64(args.cloneflags),
+	if args.Cloneargs == nil {
+		args.Cloneargs = &cloneArgs{
+			flags:      uint64(args.Cloneflags),
 			exitSignal: uint64(syscall.SIGCHLD),
 		}
 	}
-	if args.env == nil {
-		args.env = os.Environ()
+	if args.Env == nil {
+		args.Env = os.Environ()
 	}
-	pid, _, error := syscall.RawSyscall(CLONE3, uintptr(unsafe.Pointer(args.cloneargs)), unsafe.Sizeof(*args.cloneargs), 0)
+	pid, _, error := syscall.RawSyscall(CLONE3, uintptr(unsafe.Pointer(args.Cloneargs)), unsafe.Sizeof(*args.Cloneargs), 0)
 	if error != 0 {
 		fmt.Printf("Error cloning: %v\n", error)
 		return pid, err
 	}
 	if int(pid) == 0 {
 		slog.Debug("Child", "pid", pid, "pid thread", os.Getpid())
-		slog.Debug("Child", "exec", args.exe, "options", args.exeargs)
-		arg0p, e := syscall.BytePtrFromString(args.exe)
+		slog.Debug("Child", "exec", args.Exe, "options", args.Exeargs)
+		arg0p, e := syscall.BytePtrFromString(args.Exe)
 		if e != nil {
 			log.Fatal("Error converting process name to pointer")
 		}
-		arglp, e := syscall.SlicePtrFromStrings(args.exeargs)
+		arglp, e := syscall.SlicePtrFromStrings(args.Exeargs)
 		if e != nil {
 			log.Fatal("Error converting arguments to pointer")
 		}
-		envlp, e := syscall.SlicePtrFromStrings(args.env)
+		envlp, e := syscall.SlicePtrFromStrings(args.Env)
 		if e != nil {
 			log.Fatal("Error converting arguments to pointer")
 		}
