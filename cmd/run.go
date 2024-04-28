@@ -51,13 +51,15 @@ func run(args []string) {
 		for _, entry := range envVariables {
 			a.Env = append(a.Env, entry)
 		}
-		err := Exec(&a)
+		err = Exec(&a)
 		if err != 0 {
-			log.Fatal("Error executing ", args[0])
+			log.Fatal("Error executing ", args[0], ": ", err)
 		}
 	} else {
+		// Wait
 		slog.Debug("Parent", "child pid", pid, "pid thread", os.Getpid())
 		Wait(int(pid))
+		return
 	}
 	return
 }
