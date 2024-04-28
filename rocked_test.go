@@ -33,3 +33,18 @@ func TestExecSuccess(t *testing.T) {
 		t.Fatalf("Error executing %v", a.Exe)
 	}
 }
+
+func TestExecArgsNil(t *testing.T) {
+	err := cmd.Exec(nil)
+	if err != 0 {
+		t.Fatalf("Error executing with an empty ExecArgs")
+	}
+}
+
+func TestChroot(t *testing.T) {
+	dir := t.TempDir()
+	err := cmd.Chroot(dir)
+	if err != 0 {
+		t.Fatalf("Error chrooting on the directory %v: %v", dir, err)
+	}
+}
