@@ -16,6 +16,7 @@ import (
 
 var (
 	envVariables []string
+	image        string
 )
 
 func run(args []string) {
@@ -30,8 +31,8 @@ func run(args []string) {
 		fmt.Printf("Error forking: %v", int(err))
 		return
 	}
-	// Unpack the test chroot env
-	path := "/tmp/test-chroot"
+	// For now we'll use a fixed path for the container images
+	path := "/tmp/test-chroot" + image
 	//utils.CleanupChrootDir(path, true)
 	// utils.ExtractImage("utils/Fedora-minimal-chroot.tar", path)
 	if int(pid) == 0 {
@@ -69,6 +70,7 @@ var runCmd = &cobra.Command{
 	Use:   "run",
 	Short: "Runs a process",
 	Run: func(cmd *cobra.Command, args []string) {
+		fmt.Println(args)
 		run(args)
 	},
 }
@@ -76,6 +78,8 @@ var runCmd = &cobra.Command{
 func init() {
 	rootCmd.AddCommand(runCmd)
 	runCmd.Flags().StringArrayVarP(&envVariables, "env", "e", nil, "Sets environment variables. It can be repeated")
+	runCmd.Flags().StringVarP(&image, "image", "i", "Fedora", "Use the container image")
+	runCmd.MarkFlagRequired("image")
 
 	// Here you will define your flags and configuration settings.
 
