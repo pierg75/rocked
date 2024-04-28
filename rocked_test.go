@@ -15,9 +15,9 @@ func TestForkSuccess(t *testing.T) {
 	if pid < 0 {
 		t.Fatalf("ForkExec didn't return a valid pid (%v)", pid)
 	}
-	error := cmd.Wait(int(pid))
-	if error != 0 {
-		t.Fatalf("Wait failed with an error (%v)", err)
+	p := cmd.Wait(int(pid))
+	if p != int(pid) {
+		t.Fatalf("Wait failed (returned pid (%v) is different from the passed pid (%v)", p, pid)
 	}
 }
 
