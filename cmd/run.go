@@ -7,6 +7,7 @@ import (
 	"fmt"
 	"log"
 	"os"
+	//"rocked/utils"
 
 	"log/slog"
 
@@ -29,9 +30,19 @@ func run(args []string) {
 		fmt.Printf("Error forking: %v", int(err))
 		return
 	}
+	// Unpack the test chroot env
+	path := "/tmp/test-chroot"
+	//utils.CleanupChrootDir(path, true)
+	// utils.ExtractImage("utils/Fedora-minimal-chroot.tar", path)
 	if int(pid) == 0 {
 		slog.Debug("Child", "pid", pid, "pid thread", os.Getpid(), "pid parent", os.Getppid())
 		slog.Debug("Child", "exec", args[0], "options", args)
+		// Chroot into the new environment
+		err := Chroot(path)
+		if err != 0 {
+			log.Fatal("Error trying to chroot into ", path, ": ", err)
+		}
+		// Exec
 		a := ExecArgs{
 			Exe:     args[0],
 			Exeargs: args,
