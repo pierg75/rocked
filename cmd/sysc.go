@@ -8,6 +8,7 @@ import (
 	"log"
 	"log/slog"
 	"os"
+	"rocked/utils"
 	"syscall"
 	"unsafe"
 )
@@ -102,7 +103,12 @@ func Wait(pid int) (status int) {
 // Chroot changes the root directory of the process to the specified path.
 // It returns an error or zero if all is fine.
 func Chroot(path string) (err syscall.Errno) {
-
+	if utils.IsRoot() == false {
+		return syscall.Errno(syscall.EACCES)
+	}
+	if len(path) == 0 {
+		return syscall.Errno(syscall.EINVAL)
+	}
 	pathp, e := syscall.BytePtrFromString(path)
 	if e != nil {
 		log.Fatal("Error converting process name to pointer")
