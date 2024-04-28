@@ -39,6 +39,10 @@ type ExecArgs struct {
 	Env     []string
 }
 
+// Fork executes the clone3 syscalls.
+// It accepts a struct Cloneargs, which mirrors the clone_args struct (see man 2 clone)
+// If no CloneArgs is passed, it will use default flags (CLONE_VFORK | CLONE_FILES)
+// and default exit signal (SIGCHLD).
 func Fork(args *CloneArgs) (p uintptr, err syscall.Errno) {
 	if args == nil {
 		args = &CloneArgs{}
@@ -57,6 +61,10 @@ func Fork(args *CloneArgs) (p uintptr, err syscall.Errno) {
 	return pid, error
 }
 
+// Exec executes the execve syscalls.
+// It accepts a struct ExecArgs, which takes the executable, the arguments and the environment.
+// If no environment is passed, it will copy the current OS env
+// and default exit signal (SIGCHLD).
 func Exec(args *ExecArgs) (err syscall.Errno) {
 	if args.Env == nil {
 		args.Env = os.Environ()
@@ -80,6 +88,8 @@ func Exec(args *ExecArgs) (err syscall.Errno) {
 	return syscall.Errno(0)
 }
 
+// Wait waits for the pid to change state.
+// It takes the PID of the process to wait on and returns the pid of the process.
 func Wait(pid int) (status int) {
 	var s int
 	_, _, err := syscall.RawSyscall(WAIT4, uintptr(pid), uintptr(s), 0)
@@ -89,6 +99,8 @@ func Wait(pid int) (status int) {
 	return s
 }
 
+// Chroot changes the root directory of the process to the specified path.
+// It returns an error or zero if all is fine.
 func Chroot(path string) (err syscall.Errno) {
 
 	pathp, e := syscall.BytePtrFromString(path)
