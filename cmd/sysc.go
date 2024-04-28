@@ -67,6 +67,9 @@ func Fork(args *CloneArgs) (p uintptr, err syscall.Errno) {
 // If no environment is passed, it will copy the current OS env
 // and default exit signal (SIGCHLD).
 func Exec(args *ExecArgs) (err syscall.Errno) {
+	if args == nil {
+		log.Fatalf("ExecArgs is nil")
+	}
 	if args.Env == nil {
 		args.Env = os.Environ()
 	}
