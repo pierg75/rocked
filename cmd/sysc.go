@@ -95,12 +95,13 @@ func Exec(args *ExecArgs) (err syscall.Errno) {
 // Wait waits for the pid to change state.
 // It takes the PID of the process to wait on and returns the pid of the process.
 func Wait(pid int) (status int) {
-	var s int
-	_, _, err := syscall.RawSyscall(WAIT4, uintptr(pid), uintptr(s), 0)
+	var wstatus uintptr
+	p, _, err := syscall.RawSyscall(WAIT4, uintptr(pid), wstatus, 0)
+	slog.Debug("wait4 returns", "status", wstatus, "pid", p, "err", err)
 	if err != 0 {
 		slog.Debug("wait4", "error", err)
 	}
-	return s
+	return int(pid)
 }
 
 // Chroot changes the root directory of the process to the specified path.
@@ -117,6 +118,5 @@ func Chroot(path string) (err syscall.Errno) {
 		log.Fatal("Error converting process name to pointer")
 	}
 	_, _, error := syscall.RawSyscall(CHROOT, uintptr(unsafe.Pointer(pathp)), 0, 0)
-
 	return error
 }
