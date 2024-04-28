@@ -3,7 +3,9 @@ package utils
 import (
 	"archive/tar"
 	"io"
+	"log"
 	"os"
+	"os/user"
 	"path/filepath"
 )
 
@@ -42,7 +44,13 @@ func ExtractImage(archive, dest string) error {
 		}
 
 	}
-
 	return nil
+}
 
+func IsRoot() bool {
+	user, err := user.Current()
+	if err != nil {
+		log.Fatalf("Error trying to get the current user (%v)", err)
+	}
+	return user.Username == "root"
 }
