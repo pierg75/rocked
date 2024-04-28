@@ -9,6 +9,20 @@ import (
 	"path/filepath"
 )
 
+func CleanupChrootDir(path string, create bool) (err error) {
+	_, error := os.Stat(path)
+	if error == os.ErrNotExist {
+		return nil
+	} else if error != nil {
+		return error
+	}
+	os.RemoveAll(path)
+	if create {
+		os.Mkdir(path, 0644)
+	}
+	return nil
+}
+
 func ExtractImage(archive, dest string) error {
 	reader, err := os.Open(archive)
 	if err != nil {
