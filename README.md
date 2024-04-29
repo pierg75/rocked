@@ -47,7 +47,7 @@ Global Flags:
 ```
 
 The `-i` flag is mandatory. For now, the path where the images should be placed is `/tmp/test-chroot`.
-The program will be then use the path, for example, `/tmp/test-chroot/fedora`.
+The program will be then use the path, for example, `/tmp/test-chroot/Fedora`.
 
 For now, you can use the script in `utils` named `prep_chroot.sh` to download a Fedora container image.
-Once downloaded, extract the archive to `/tmp/test-chroot/fedora`.
+Once downloaded, extract the archive to `/tmp/test-chroot/Fedora`.
