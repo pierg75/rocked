@@ -32,7 +32,7 @@ func run(args []string) {
 		return
 	}
 	// For now we'll use a fixed path for the container images
-	path := "/tmp/test-chroot" + image
+	path := "/tmp/test-chroot/" + image
 	//utils.CleanupChrootDir(path, true)
 	// utils.ExtractImage("utils/Fedora-minimal-chroot.tar", path)
 	if int(pid) == 0 {
