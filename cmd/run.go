@@ -7,7 +7,6 @@ import (
 	"fmt"
 	"log"
 	"os"
-	//"rocked/utils"
 
 	"log/slog"
 
@@ -38,8 +37,13 @@ func run(args []string) {
 	if int(pid) == 0 {
 		slog.Debug("Child", "pid", pid, "pid thread", os.Getpid(), "pid parent", os.Getppid())
 		slog.Debug("Child", "exec", args[0], "options", args)
+		// mount proc
+		err := Mount("proc", path+"/proc", "proc")
+		if err != 0 {
+			log.Fatalf("Error mounting proc on the directory %v: %v", path+"/proc", err)
+		}
 		// Chroot into the new environment
-		err := Chroot(path)
+		err = Chroot(path)
 		if err != 0 {
 			log.Fatal("Error trying to chroot into ", path, ": ", err)
 		}
