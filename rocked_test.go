@@ -48,3 +48,16 @@ func TestChroot(t *testing.T) {
 		t.Fatalf("Error chrooting on the directory %v: %v", dir, err)
 	}
 }
+
+func TestChrootMount(t *testing.T) {
+	dir := t.TempDir()
+	os.Mkdir(dir+"/proc", 777)
+	err := cmd.Mount("proc", dir+"/proc", "proc")
+	if err != 0 {
+		t.Fatalf("Error mounting proc on the directory %v: %v", dir+"/proc", err)
+	}
+	err = cmd.Chroot(dir)
+	if err != 0 {
+		t.Fatalf("Error chrooting on the directory %v: %v", dir, err)
+	}
+}
