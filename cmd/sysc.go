@@ -18,6 +18,7 @@ var (
 	WAIT4  uintptr = 61
 	CLONE3 uintptr = 435
 	CHROOT uintptr = 161
+	MOUNT  uintptr = 165
 )
 
 type CloneArgs struct {
@@ -119,4 +120,35 @@ func Chroot(path string) (err syscall.Errno) {
 	}
 	_, _, error := syscall.RawSyscall(CHROOT, uintptr(unsafe.Pointer(pathp)), 0, 0)
 	return error
+}
+
+// Mount file systems. For now this is used only for bind mounting
+func Mount(source, dest, fstype string) (err syscall.Errno) {
+	slog.Debug("Mount", "pid", os.Getpid(), "user", os.Geteuid(), "source", source, "dest", dest, "type", fstype)
+	if len(source) == 0 || len(dest) == 0 {
+		return syscall.Errno(syscall.EINVAL)
+	}
+	if source != "proc" {
+		if utils.PathExists(source) == false || utils.PathExists(dest) == false {
+			slog.Debug("Mount returns EINVAL")
+			return syscall.Errno(syscall.EINVAL)
+		}
+	}
+	sourcep, e := syscall.BytePtrFromString(source)
+	if e != nil {
+		log.Fatal("Error converting source path to pointer")
+	}
+	destp, e := syscall.BytePtrFromString(dest)
+	if e != nil {
+		log.Fatal("Error converting dest path to pointer")
+	}
+
+	typep, e := syscall.BytePtrFromString(fstype)
+	if e != nil {
+		log.Fatal("Error converting type to pointer")
+	}
+	_, _, error := syscall.RawSyscall6(MOUNT, uintptr(unsafe.Pointer(sourcep)), uintptr(unsafe.Pointer(destp)), uintptr(unsafe.Pointer(typep)), 0, 0, 0)
+	slog.Debug("Mount returns ", "error", error)
+	return error
+
 }
