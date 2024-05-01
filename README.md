@@ -46,8 +46,13 @@ Global Flags:
   -v, --verbose   Enable verbose logging
 ```
 
-The `-i` flag is mandatory. For now, the path where the images should be placed is `/tmp/test-chroot`.
-The program will be then use the path, for example, `/tmp/test-chroot/Fedora`.
+To pass a command to run, use the double `-` to mark the end of the command options:
+```
+# sudo ./rocked run -i Fedora -- /usr/bin/whoami
+```
 
-For now, you can use the script in `utils` named `prep_chroot.sh` to download a Fedora container image.
-Once downloaded, extract the archive to `/tmp/test-chroot/Fedora`.
+The `-i` flag is mandatory. For now, the path where the images should be placed is `/tmp/test-chroot`.
+The program will be then use the path plus the image name, for example, `/tmp/test-chroot/Fedora`.
+
+For now, you can use the script in `utils` named `prep_chroot.sh` to download a Fedora or an Ubuntu container image in the current directory.
+Once downloaded, extract the archive to `/tmp/test-chroot/{fedora, ubuntu}`.
