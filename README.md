@@ -4,6 +4,7 @@
 
 A tool built while I learn about containers and how they work.
 
+This is based on the [rubber-docker](https://github.com/Fewbytes/rubber-docker) project.
 
 ## Usage
 
@@ -56,3 +57,7 @@ The program will be then use the path plus the image name, for example, `/tmp/te
 
 For now, you can use the script in `utils` named `prep_chroot.sh` to download a Fedora or an Ubuntu container image in the current directory.
 Once downloaded, extract the archive to `/tmp/test-chroot/{fedora, ubuntu}`.
+
+## Levels
+
+[Here](doc/LEVELS.md) are some notes on the various levels.
