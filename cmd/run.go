@@ -74,7 +74,6 @@ var runCmd = &cobra.Command{
 	Use:   "run",
 	Short: "Runs a process",
 	Run: func(cmd *cobra.Command, args []string) {
-		fmt.Println(args)
 		run(args)
 	},
 }
