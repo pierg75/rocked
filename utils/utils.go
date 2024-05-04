@@ -4,6 +4,10 @@ import (
 	"os"
 )
 
+var (
+	VIRTFS = []string{"proc", "sys"}
+)
+
 func PathExists(path string) bool {
 	_, err := os.Stat(path)
 	if err != nil {
@@ -14,4 +18,13 @@ func PathExists(path string) bool {
 		}
 	}
 	return true
+}
+
+func IsVirtual(fs string) bool {
+	for _, fstype := range VIRTFS {
+		if fstype == fs {
+			return true
+		}
+	}
+	return false
 }
