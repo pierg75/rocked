@@ -37,10 +37,14 @@ func run(args []string) {
 	if int(pid) == 0 {
 		slog.Debug("Child", "pid", pid, "pid thread", os.Getpid(), "pid parent", os.Getppid())
 		slog.Debug("Child", "exec", args[0], "options", args)
-		// mount proc
+		// mount proc and sys
 		err := Mount("proc", path+"/proc", "proc")
 		if err != 0 {
 			log.Fatalf("Error mounting proc on the directory %v: %v", path+"/proc", err)
+		}
+		err = Mount("sys", path+"/sys", "sysfs")
+		if err != 0 {
+			log.Fatalf("Error mounting sys on the directory %v: %v", path+"/sys", err)
 		}
 		// Chroot into the new environment
 		err = Chroot(path)
