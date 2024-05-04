@@ -8,6 +8,7 @@ var (
 	VIRTFS = []string{"proc", "sys"}
 )
 
+// Checks if a path (either file or directory) exists
 func PathExists(path string) bool {
 	_, err := os.Stat(path)
 	if err != nil {
@@ -20,6 +21,7 @@ func PathExists(path string) bool {
 	return true
 }
 
+// Checks if a fstype is a virtual file system.
 func IsVirtual(fs string) bool {
 	for _, fstype := range VIRTFS {
 		if fstype == fs {
