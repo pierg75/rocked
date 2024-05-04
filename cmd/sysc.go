@@ -19,6 +19,7 @@ var (
 	CLONE3 uintptr = 435
 	CHROOT uintptr = 161
 	MOUNT  uintptr = 165
+	UMOUNT uintptr = 166
 )
 
 type CloneArgs struct {
@@ -151,6 +152,24 @@ func Mount(source, dest, fstype string) (err syscall.Errno) {
 	}
 	_, _, error := syscall.RawSyscall6(MOUNT, uintptr(unsafe.Pointer(sourcep)), uintptr(unsafe.Pointer(destp)), uintptr(unsafe.Pointer(typep)), 0, 0, 0)
 	slog.Debug("Mount returns ", "error", error)
+	return error
+
+}
+
+// Umount file systems
+func Umount(target string, flags int) (err syscall.Errno) {
+	slog.Debug("Umount", "pid", os.Getpid(), "user", os.Geteuid(), "target", target)
+	if len(target) == 0 {
+		return syscall.Errno(syscall.EINVAL)
+	}
+
+	targetp, e := syscall.BytePtrFromString(target)
+	if e != nil {
+		log.Fatal("Error converting target path to pointer")
+	}
+	_, _, error := syscall.RawSyscall(UMOUNT, uintptr(unsafe.Pointer(targetp)), uintptr(flags), 0)
+
+	slog.Debug("Umount returns ", "error", error)
 	return error
 
 }
