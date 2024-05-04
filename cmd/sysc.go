@@ -128,11 +128,13 @@ func Mount(source, dest, fstype string) (err syscall.Errno) {
 	if len(source) == 0 || len(dest) == 0 {
 		return syscall.Errno(syscall.EINVAL)
 	}
-	if source != "proc" {
+
+	if !utils.IsVirtual(source) {
 		if utils.PathExists(source) == false || utils.PathExists(dest) == false {
 			slog.Debug("Mount returns EINVAL")
 			return syscall.Errno(syscall.EINVAL)
 		}
+
 	}
 	sourcep, e := syscall.BytePtrFromString(source)
 	if e != nil {
