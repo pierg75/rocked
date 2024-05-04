@@ -25,27 +25,29 @@ func run(args []string) {
 		fmt.Printf("You need to specify a program to run\n")
 		return
 	}
+	// mount proc and sys
+	path := "/tmp/test-chroot/" + image
+	proc_target := path + "/proc"
+	sys_target := path + "/sys"
+	err := Mount("proc", proc_target, "proc")
+	if err != 0 {
+		log.Fatalf("Error mounting proc on the directory %v: %v", proc_target, err)
+	}
+	err = Mount("sys", sys_target, "sysfs")
+	if err != 0 {
+		log.Fatalf("Error mounting sys on the directory %v: %v", sys_target, err)
+	}
 	pid, err := Fork(nil)
 	if err != 0 {
 		fmt.Printf("Error forking: %v", int(err))
 		return
 	}
 	// For now we'll use a fixed path for the container images
-	path := "/tmp/test-chroot/" + image
 	//utils.CleanupChrootDir(path, true)
 	// utils.ExtractImage("utils/Fedora-minimal-chroot.tar", path)
 	if int(pid) == 0 {
 		slog.Debug("Child", "pid", pid, "pid thread", os.Getpid(), "pid parent", os.Getppid())
 		slog.Debug("Child", "exec", args[0], "options", args)
-		// mount proc and sys
-		err := Mount("proc", path+"/proc", "proc")
-		if err != 0 {
-			log.Fatalf("Error mounting proc on the directory %v: %v", path+"/proc", err)
-		}
-		err = Mount("sys", path+"/sys", "sysfs")
-		if err != 0 {
-			log.Fatalf("Error mounting sys on the directory %v: %v", path+"/sys", err)
-		}
 		// Chroot into the new environment
 		err = Chroot(path)
 		if err != 0 {
@@ -68,6 +70,15 @@ func run(args []string) {
 		// Wait
 		slog.Debug("Parent", "child pid", pid, "pid thread", os.Getpid())
 		Wait(int(pid))
+		// Umount proc and sys
+		err = Umount(proc_target, 0)
+		if err != 0 {
+			log.Fatalf("Error umounting proc on the directory %v: %v", proc_target, err)
+		}
+		err = Umount(path+"/sys", 0)
+		if err != 0 {
+			log.Fatalf("Error umounting sys on the directory %v: %v", sys_target, err)
+		}
 		return
 	}
 	return
