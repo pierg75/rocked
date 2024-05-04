@@ -51,10 +51,14 @@ func TestChroot(t *testing.T) {
 
 func TestChrootMount(t *testing.T) {
 	dir := t.TempDir()
+	target := dir + "/proc"
 	os.Mkdir(dir+"/proc", 777)
-	err := cmd.Mount("proc", dir+"/proc", "proc")
+	t.Cleanup(func() {
+		cmd.Umount(dir+"/proc", 0)
+	})
+	err := cmd.Mount("proc", target, "proc")
 	if err != 0 {
-		t.Fatalf("Error mounting proc on the directory %v: %v", dir+"/proc", err)
+		t.Fatalf("Error mounting proc on the directory %v: %v", target, err)
 	}
 	err = cmd.Chroot(dir)
 	if err != 0 {
