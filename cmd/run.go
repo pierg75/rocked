@@ -81,6 +81,11 @@ func run(args []string) {
 		if err != 0 {
 			log.Fatal("Error trying to chroot into ", path, ": ", err)
 		}
+		err = Chdir("/")
+		if err != 0 {
+			log.Fatal("Error trying to chdir into root", err)
+		}
+
 		// Exec
 		a := ExecArgs{
 			Exe:     args[0],

@@ -16,6 +16,7 @@ import (
 var (
 	EXECVE uintptr = 59
 	WAIT4  uintptr = 61
+	CHDIR  uintptr = 80
 	CLONE3 uintptr = 435
 	CHROOT uintptr = 161
 	MOUNT  uintptr = 165
@@ -170,6 +171,24 @@ func Umount(target string, flags int) (err syscall.Errno) {
 	_, _, error := syscall.RawSyscall(UMOUNT, uintptr(unsafe.Pointer(targetp)), uintptr(flags), 0)
 
 	slog.Debug("Umount returns ", "error", error)
+	return error
+
+}
+
+// Change directory
+func Chdir(dir string) (err syscall.Errno) {
+	slog.Debug("Chdir", "pid", os.Getpid(), "user", os.Geteuid(), "dir", dir)
+	if len(dir) == 0 {
+		return syscall.Errno(syscall.EINVAL)
+	}
+
+	dirp, e := syscall.BytePtrFromString(dir)
+	if e != nil {
+		log.Fatal("Error converting directory path to pointer")
+	}
+	_, _, error := syscall.RawSyscall(CHDIR, uintptr(unsafe.Pointer(dirp)), 0, 0)
+
+	slog.Debug("Chdir returns ", "error", error)
 	return error
 
 }
