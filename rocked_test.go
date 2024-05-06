@@ -82,3 +82,19 @@ func TestMountUmountProc(t *testing.T) {
 		t.Fatalf("Error umounting on the directory %v: %v", dir, err)
 	}
 }
+
+func TestUnshareMount(t *testing.T) {
+	err := cmd.Unshare(cmd.CLONE_NEWNS)
+	if err != 0 {
+		t.Fatalf("Error unsharing mount namespace %v", err)
+	}
+	bin := "/usr/bin/df"
+	a := cmd.ExecArgs{
+		Exe: string(bin),
+	}
+	a.Env = os.Environ()
+	err = cmd.Exec(&a)
+	if err != 0 {
+		t.Fatalf("Error executing %v", a.Exe)
+	}
+}

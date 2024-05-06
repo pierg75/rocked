@@ -76,6 +76,12 @@ func run(args []string) {
 	if int(pid) == 0 {
 		slog.Debug("Child", "pid", pid, "pid thread", os.Getpid(), "pid parent", os.Getppid())
 		slog.Debug("Child", "exec", args[0], "options", args)
+		// New namespaces
+		err = Unshare(CLONE_NEWNS)
+		if err != 0 {
+			log.Fatal("Error trying to unshare ", ": ", err)
+		}
+
 		// Chroot into the new environment
 		err = Chroot(path)
 		if err != 0 {
