@@ -44,6 +44,7 @@ type ExecArgs struct {
 	Env     []string
 }
 
+// Fork flags
 var (
 	CLONE_VM             uintptr = 0x00000100 /* set if VM shared between processes */
 	CLONE_FS             uintptr = 0x00000200 /* set if fs info shared between processes */
@@ -69,6 +70,54 @@ var (
 	CLONE_NEWPID         uintptr = 0x20000000 /* New pid namespace */
 	CLONE_NEWNET         uintptr = 0x40000000 /* New network namespace */
 	CLONE_IO             uintptr = 0x80000000 /* Clone io context */
+)
+
+var (
+	MS_RDONLY      uintptr = 1    /* Mount read-only */
+	MS_NOSUID      uintptr = 2    /* Ignore suid and sgid bits */
+	MS_NODEV       uintptr = 4    /* Disallow access to device special files */
+	MS_NOEXEC      uintptr = 8    /* Disallow program execution */
+	MS_SYNCHRONOUS uintptr = 16   /* Writes are synced at once */
+	MS_REMOUNT     uintptr = 32   /* Alter flags of a mounted FS */
+	MS_MANDLOCK    uintptr = 64   /* Allow mandatory locks on an FS */
+	MS_DIRSYNC     uintptr = 128  /* Directory modifications are synchronous */
+	MS_NOATIME     uintptr = 1024 /* Do not update access times. */
+	MS_NODIRATIME  uintptr = 2048 /* Do not update directory access times */
+	MS_BIND        uintptr = 4096
+	MS_MOVE        uintptr = 8192
+	MS_REC         uintptr = 16384
+	MS_VERBOSE     uintptr = 32768 /* War is peace. Verbosity is silence.
+	   MS_VERBOSE is deprecated. */
+	MS_SILENT      uintptr = 32768
+	MS_POSIXACL    uintptr = (1 << 16) /* VFS does not apply the umask */
+	MS_UNBINDABLE  uintptr = (1 << 17) /* change to unbindable */
+	MS_PRIVATE     uintptr = (1 << 18) /* change to private */
+	MS_SLAVE       uintptr = (1 << 19) /* change to slave */
+	MS_SHARED      uintptr = (1 << 20) /* change to shared */
+	MS_RELATIME    uintptr = (1 << 21) /* Update atime relative to mtime/ctime. */
+	MS_KERNMOUNT   uintptr = (1 << 22) /* this is a kern_mount call */
+	MS_I_VERSION   uintptr = (1 << 23) /* Update inode I_version field */
+	MS_STRICTATIME uintptr = (1 << 24) /* Always perform atime updates */
+	MS_LAZYTIME    uintptr = (1 << 25) /* Update the on-disk [acm]times lazily */
+
+	/* These sb flags are internal to the kernel */
+	MS_SUBMOUNT     uintptr = (1 << 26)
+	MS_NOREMOTELOCK uintptr = (1 << 27)
+	MS_NOSEC        uintptr = (1 << 28)
+	MS_BORN         uintptr = (1 << 29)
+	MS_ACTIVE       uintptr = (1 << 30)
+	MS_NOUSER       uintptr = (1 << 31)
+
+	/*
+	 * Superblock flags that can be altered by MS_REMOUNT
+	 */
+	MS_RMT_MASK uintptr = MS_RDONLY | MS_SYNCHRONOUS | MS_MANDLOCK | MS_I_VERSION | MS_LAZYTIME
+
+	/*
+	 * Old magic mount flag and mask
+	 */
+	MS_MGC_VAL uintptr = 0xC0ED0000
+	MS_MGC_MSK uintptr = 0xffff0000
 )
 
 // Fork executes the clone3 syscalls.
