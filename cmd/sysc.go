@@ -204,7 +204,7 @@ func Chroot(path string) (err syscall.Errno) {
 // Mount file systems.
 // source and destination must be valid paths.
 // It takes an integer flags
-func Mount(source, dest, fstype string, flags int) (err syscall.Errno) {
+func Mount(source, dest, fstype string, flags uintptr) (err syscall.Errno) {
 	slog.Debug("Mount", "pid", os.Getpid(), "user", os.Geteuid(), "source", source, "dest", dest, "type", fstype)
 	if len(source) == 0 || len(dest) == 0 {
 		return syscall.Errno(syscall.EINVAL)
