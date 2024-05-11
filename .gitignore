@@ -22,3 +22,7 @@ go.work
 
 # Container images
 utils/*.tar
+
+# Executable and tests
+rocked
+*strace*
