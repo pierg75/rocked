@@ -152,19 +152,24 @@ func Chroot(path string) (err syscall.Errno) {
 	return error
 }
 
-// Mount file systems. For now this is used only for bind mounting
-func Mount(source, dest, fstype string) (err syscall.Errno) {
+// Mount file systems.
+// source and destination must be valid paths.
+// It takes an integer flags
+func Mount(source, dest, fstype string, flags int) (err syscall.Errno) {
 	slog.Debug("Mount", "pid", os.Getpid(), "user", os.Geteuid(), "source", source, "dest", dest, "type", fstype)
 	if len(source) == 0 || len(dest) == 0 {
 		return syscall.Errno(syscall.EINVAL)
 	}
 
 	if !utils.IsVirtual(source) {
-		if utils.PathExists(source) == false || utils.PathExists(dest) == false {
-			slog.Debug("Mount returns EINVAL")
-			return syscall.Errno(syscall.EINVAL)
+		if utils.PathExists(source) == false {
+			log.Printf("Invalid source (does the directory exist?)")
+			return syscall.Errno(syscall.ENOENT)
 		}
-
+		if utils.PathExists(dest) == false {
+			log.Printf("Invalid destination (does the directory exist?)")
+			return syscall.Errno(syscall.ENOENT)
+		}
 	}
 	sourcep, e := syscall.BytePtrFromString(source)
 	if e != nil {
