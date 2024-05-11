@@ -257,6 +257,24 @@ func Umount(target string, flags int) (err syscall.Errno) {
 
 }
 
+// Set flags on a mountpoint
+func SetMount(mountpoint string, flags uintptr) (err syscall.Errno) {
+	slog.Debug("SetMount", "pid", os.Getpid(), "user", os.Geteuid(), "mountpoint", mountpoint)
+	if len(mountpoint) == 0 {
+		return syscall.Errno(syscall.EINVAL)
+	}
+
+	mpp, e := syscall.BytePtrFromString(mountpoint)
+	if e != nil {
+		log.Fatal("Error converting mountpoint to pointer")
+	}
+	_, _, error := syscall.RawSyscall6(MOUNT, 0, uintptr(unsafe.Pointer(mpp)), 0, flags, 0, 0)
+
+	slog.Debug("SetMount returns ", "error", error)
+	return error
+
+}
+
 // Change directory
 func Chdir(dir string) (err syscall.Errno) {
 	slog.Debug("Chdir", "pid", os.Getpid(), "user", os.Geteuid(), "dir", dir)
