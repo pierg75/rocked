@@ -34,7 +34,7 @@ func mount_virtfs(path string) syscall.Errno {
 		log.Printf("Error mounting sys on the directory %v: %v", sys_target, err)
 		return err
 	}
-	err = Mount("devtmpfs", dev_target, "devtmpfs", 0xC0ED0000)
+	err = Mount("devtmpfs", dev_target, "devtmpfs", MS_MGC_VAL)
 	if err != 0 {
 		log.Printf("Error mounting dev on the directory %v: %v", dev_target, err)
 		return err
