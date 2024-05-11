@@ -84,14 +84,20 @@ func run(args []string) {
 	if int(pid) == 0 {
 		slog.Debug("Child", "pid", pid, "pid thread", os.Getpid(), "pid parent", os.Getppid())
 		slog.Debug("Child", "exec", args[0], "options", args)
-		err = SetMount("/", MS_REC|MS_PRIVATE)
-		if err != 0 {
-			log.Fatal("Error trying to switch root as private: ", err)
-		}
 		err = Unshare(CLONE_NEWNS)
 		if err != 0 {
 			log.Fatal("Error trying to unshare ", ": ", err)
 		}
+		err = SetMount("/", MS_REC|MS_PRIVATE)
+		if err != 0 {
+			log.Fatal("Error trying to switch root as private: ", err)
+		}
+		// This is to temporally have a mountpoint for pivot_root
+		err = Mount(path, path, "", MS_BIND)
+		if err != 0 {
+			log.Fatal("Error bind mount ", path, "on ", path, ": ", err)
+		}
+
 		err := mount_virtfs(path)
 		defer umount_virtfs(path)
 		if err != 0 {
