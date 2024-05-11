@@ -184,7 +184,7 @@ func Mount(source, dest, fstype string, flags int) (err syscall.Errno) {
 	if e != nil {
 		log.Fatal("Error converting type to pointer")
 	}
-	_, _, error := syscall.RawSyscall6(MOUNT, uintptr(unsafe.Pointer(sourcep)), uintptr(unsafe.Pointer(destp)), uintptr(unsafe.Pointer(typep)), 0, 0, 0)
+	_, _, error := syscall.RawSyscall6(MOUNT, uintptr(unsafe.Pointer(sourcep)), uintptr(unsafe.Pointer(destp)), uintptr(unsafe.Pointer(typep)), uintptr(flags), 0, 0)
 	slog.Debug("Mount returns ", "error", error)
 	return error
 

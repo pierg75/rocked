@@ -78,17 +78,21 @@ func run(args []string) {
 		return
 	}
 	// For now we'll use a fixed path for the container images
-	//utils.CleanupChrootDir(path, true)
+	// utils.CleanupChrootDir(path, true)
 	// utils.ExtractImage("utils/Fedora-minimal-chroot.tar", path)
+	// New namespaces
+	pid, err := Fork(nil)
+	if err != 0 {
+		fmt.Printf("Error forking: %v", int(err))
+		return
+	}
 	if int(pid) == 0 {
 		slog.Debug("Child", "pid", pid, "pid thread", os.Getpid(), "pid parent", os.Getppid())
 		slog.Debug("Child", "exec", args[0], "options", args)
-		// New namespaces
 		err = Unshare(CLONE_NEWNS)
 		if err != 0 {
 			log.Fatal("Error trying to unshare ", ": ", err)
 		}
-
 		// Chroot into the new environment
 		err = Chroot(path)
 		if err != 0 {
