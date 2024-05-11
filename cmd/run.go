@@ -72,11 +72,6 @@ func run(args []string) {
 		return
 	}
 	path := base_path + image
-	err := mount_virtfs(path)
-	defer umount_virtfs(path)
-	if err != 0 {
-		return
-	}
 	// For now we'll use a fixed path for the container images
 	// utils.CleanupChrootDir(path, true)
 	// utils.ExtractImage("utils/Fedora-minimal-chroot.tar", path)
@@ -92,6 +87,11 @@ func run(args []string) {
 		err = Unshare(CLONE_NEWNS)
 		if err != 0 {
 			log.Fatal("Error trying to unshare ", ": ", err)
+		}
+		err := mount_virtfs(path)
+		defer umount_virtfs(path)
+		if err != 0 {
+			return
 		}
 		// Chroot into the new environment
 		err = Chroot(path)
