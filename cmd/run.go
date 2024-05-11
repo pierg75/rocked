@@ -7,6 +7,7 @@ import (
 	"fmt"
 	"log"
 	"os"
+	"syscall"
 
 	"log/slog"
 
@@ -19,40 +20,48 @@ var (
 	base_path    string = "/tmp/test-chroot/"
 )
 
-func mount_virtfs(path string) {
+func mount_virtfs(path string) syscall.Errno {
 	proc_target := path + "/proc"
 	sys_target := path + "/sys"
-	//dev_target := path + "/dev"
-	err := Mount("proc", proc_target, "proc")
+	dev_target := path + "/dev"
+	err := Mount("proc", proc_target, "proc", 0)
 	if err != 0 {
-		log.Fatalf("Error mounting proc on the directory %v: %v", proc_target, err)
+		log.Printf("Error mounting proc on the directory %v: %v", proc_target, err)
+		return err
 	}
-	err = Mount("sys", sys_target, "sysfs")
+	err = Mount("sys", sys_target, "sysfs", 0)
 	if err != 0 {
-		log.Fatalf("Error mounting sys on the directory %v: %v", sys_target, err)
+		log.Printf("Error mounting sys on the directory %v: %v", sys_target, err)
+		return err
 	}
-	//err = Mount("devtmpfs", dev_target, "none")
-	//if err != 0 {
-	//	log.Fatalf("Error mounting dev on the directory %v: %v", dev_target, err)
-	//}
+	err = Mount("devtmpfs", dev_target, "devtmpfs", 0xC0ED0000)
+	if err != 0 {
+		log.Printf("Error mounting dev on the directory %v: %v", dev_target, err)
+		return err
+	}
+	return 0
 }
 
-func umount_virtfs(path string) {
+func umount_virtfs(path string) syscall.Errno {
 	proc_target := path + "/proc"
 	sys_target := path + "/sys"
-	//dev_target := path + "/dev"
+	dev_target := path + "/dev"
 	err := Umount(proc_target, 0)
 	if err != 0 {
-		log.Fatalf("Error umounting proc on the directory %v: %v", proc_target, err)
+		log.Printf("Error umounting proc on the directory %v: %v", proc_target, err)
+		return err
 	}
 	err = Umount(sys_target, 0)
 	if err != 0 {
-		log.Fatalf("error umounting sys on the directory %v: %v", sys_target, err)
+		log.Printf("error umounting sys on the directory %v: %v", sys_target, err)
+		return err
 	}
-	//err = Umount(dev_target, 0)
-	//if err != 0 {
-	//	log.Fatalf("error umounting dev on the directory %v: %v", sys_target, err)
-	//}
+	err = Umount(dev_target, 0)
+	if err != 0 {
+		log.Printf("error umounting dev on the directory %v: %v", sys_target, err)
+		return err
+	}
+	return 0
 }
 
 func run(args []string) {
@@ -63,13 +72,11 @@ func run(args []string) {
 		return
 	}
 	path := base_path + image
-	mount_virtfs(path)
-	pid, err := Fork(nil)
+	err := mount_virtfs(path)
+	defer umount_virtfs(path)
 	if err != 0 {
-		fmt.Printf("Error forking: %v", int(err))
 		return
 	}
-	defer umount_virtfs(path)
 	// For now we'll use a fixed path for the container images
 	//utils.CleanupChrootDir(path, true)
 	// utils.ExtractImage("utils/Fedora-minimal-chroot.tar", path)
