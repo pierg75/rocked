@@ -98,3 +98,36 @@ func TestUnshareMount(t *testing.T) {
 		t.Fatalf("Error executing %v", a.Exe)
 	}
 }
+
+func TestPivotRoot(t *testing.T) {
+	dir := t.TempDir()
+	// Clone mount namespace
+	err := cmd.Unshare(0x00020000)
+	if err != 0 {
+		t.Fatal("Error trying to unshare ", ": ", err)
+	}
+	// Set root private
+	err = cmd.SetMount("/", 16384|(1<<18))
+	if err != 0 {
+		t.Fatal("Error trying to switch root as private: ", err)
+	}
+	// This is to temporally have a mountpoint for pivot_root
+	// MS_BIND == 4096
+	err = cmd.Mount(dir, dir, "", 4096)
+	if err != 0 {
+		t.Fatal("Error bind mount ", dir, "on ", dir, ": ", err)
+	}
+	err = cmd.Chdir(dir)
+	if err != 0 {
+		t.Fatal("Error trying to chdir into ", dir, ": ", err)
+	}
+	err = cmd.PivotRoot(".", ".")
+	if err != 0 {
+		t.Fatal("Error trying to pivot_root into ", dir, ": ", err)
+	}
+	err = cmd.Umount(".", 0x2)
+	if err != 0 {
+		t.Fatal("Error trying to umount '.'", err)
+	}
+
+}

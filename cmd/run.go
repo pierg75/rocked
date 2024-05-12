@@ -104,15 +104,22 @@ func run(args []string) {
 			return
 		}
 		// Chroot into the new environment
-		err = Chroot(path)
+		//err = Chroot(path)
+		//if err != 0 {
+		//	log.Fatal("Error trying to chroot into ", path, ": ", err)
+		//}
+		err = Chdir(path)
 		if err != 0 {
-			log.Fatal("Error trying to chroot into ", path, ": ", err)
+			log.Fatal("Error trying to chdir into ", path, ": ", err)
 		}
-		err = Chdir("/")
+		err = PivotRoot(".", ".")
 		if err != 0 {
-			log.Fatal("Error trying to chdir into root", err)
+			log.Fatal("Error trying to pivot_root into ", path, ": ", err)
 		}
-
+		err = Umount(".", syscall.MNT_DETACH)
+		if err != 0 {
+			log.Fatal("Error trying to umount '.'", err)
+		}
 		// Exec
 		a := ExecArgs{
 			Exe:     args[0],

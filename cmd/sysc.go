@@ -14,14 +14,15 @@ import (
 )
 
 var (
-	EXECVE  uintptr = 59
-	WAIT4   uintptr = 61
-	CHDIR   uintptr = 80
-	CLONE3  uintptr = 435
-	CHROOT  uintptr = 161
-	MOUNT   uintptr = 165
-	UMOUNT  uintptr = 166
-	UNSHARE uintptr = 272
+	EXECVE    uintptr = 59
+	WAIT4     uintptr = 61
+	CHDIR     uintptr = 80
+	PIVOTROOT uintptr = 155
+	CHROOT    uintptr = 161
+	MOUNT     uintptr = 165
+	UMOUNT    uintptr = 166
+	UNSHARE   uintptr = 272
+	CLONE3    uintptr = 435
 )
 
 type CloneArgs struct {
@@ -303,6 +304,27 @@ func Unshare(flags uintptr) (err syscall.Errno) {
 	_, _, error := syscall.RawSyscall(UNSHARE, flags, 0, 0)
 
 	slog.Debug("Unshare returns ", "error", error)
+	return error
+
+}
+
+// Disassociate parts of the process context
+func PivotRoot(new_root, put_old string) (err syscall.Errno) {
+	slog.Debug("PivotRoot", "pid", os.Getpid(), "user", os.Geteuid(), "new_root", new_root, "put_old", put_old)
+	if len(new_root) == 0 || len(put_old) == 0 {
+		return syscall.EINVAL
+	}
+	newrootp, e := syscall.BytePtrFromString(new_root)
+	if e != nil {
+		log.Fatal("Error converting new_root to pointer")
+	}
+	putoldp, e := syscall.BytePtrFromString(put_old)
+	if e != nil {
+		log.Fatal("Error converting put_old to pointer")
+	}
+	_, _, error := syscall.RawSyscall(PIVOTROOT, uintptr(unsafe.Pointer(newrootp)), uintptr(unsafe.Pointer(putoldp)), 0)
+
+	slog.Debug("PivotRoot returns ", "error", error)
 	return error
 
 }
