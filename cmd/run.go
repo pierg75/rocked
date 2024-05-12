@@ -72,10 +72,6 @@ func run(args []string) {
 		return
 	}
 	path := base_path + image
-	// For now we'll use a fixed path for the container images
-	// utils.CleanupChrootDir(path, true)
-	// utils.ExtractImage("utils/Fedora-minimal-chroot.tar", path)
-	// New namespaces
 	pid, err := Fork(nil)
 	if err != 0 {
 		fmt.Printf("Error forking: %v", int(err))
@@ -103,11 +99,6 @@ func run(args []string) {
 		if err != 0 {
 			return
 		}
-		// Chroot into the new environment
-		//err = Chroot(path)
-		//if err != 0 {
-		//	log.Fatal("Error trying to chroot into ", path, ": ", err)
-		//}
 		err = Chdir(path)
 		if err != 0 {
 			log.Fatal("Error trying to chdir into ", path, ": ", err)
@@ -156,14 +147,4 @@ func init() {
 	runCmd.Flags().StringArrayVarP(&envVariables, "env", "e", nil, "Sets environment variables. It can be repeated")
 	runCmd.Flags().StringVarP(&image, "image", "i", "Fedora", "Use the container image")
 	runCmd.MarkFlagRequired("image")
-
-	// Here you will define your flags and configuration settings.
-
-	// Cobra supports Persistent Flags which will work for this command
-	// and all subcommands, e.g.:
-	// runCmd.PersistentFlags().String("foo", "", "A help for foo")
-
-	// Cobra supports local flags which will only run when this command
-	// is called directly, e.g.:
-	// runCmd.Flags().BoolP("toggle", "t", false, "Help message for toggle")
 }
