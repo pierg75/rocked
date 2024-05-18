@@ -30,3 +30,5 @@ func IsVirtual(fs string) bool {
 	}
 	return false
 }
+
+// Prep a directory to be used as container

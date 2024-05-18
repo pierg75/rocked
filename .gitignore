@@ -21,7 +21,8 @@
 go.work
 
 # Container images
-utils/*.tar
+**/*.tar
+# blobs/container_images/*.tar
 
 # Executable and tests
 rocked

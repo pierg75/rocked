@@ -23,6 +23,8 @@ func CleanupChrootDir(path string, create bool) (err error) {
 	return nil
 }
 
+// Extract a tar archive into dest.
+// For now this supports only tar archives, no compression.
 func ExtractImage(archive, dest string) error {
 	reader, err := os.Open(archive)
 	if err != nil {

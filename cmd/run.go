@@ -10,6 +10,7 @@ import (
 	"syscall"
 
 	"log/slog"
+	"rocked/utils"
 
 	"github.com/spf13/cobra"
 )
@@ -17,7 +18,7 @@ import (
 var (
 	envVariables []string
 	image        string
-	base_path    string = "/tmp/test-chroot/"
+	base_path    string = "/tmp/containers/"
 )
 
 func mount_virtfs(path string) syscall.Errno {
@@ -80,6 +81,16 @@ func run(args []string) {
 	if int(pid) == 0 {
 		slog.Debug("Child", "pid", pid, "pid thread", os.Getpid(), "pid parent", os.Getppid())
 		slog.Debug("Child", "exec", args[0], "options", args)
+		// Untar the container image into a predefined root
+		// For now let's use hardocded paths
+		var defaultContainerImage string = "/tmp/containers/" + image
+		var defaultSourceContainersImages string = "blobs/container_images/" + image + ".tar"
+		utils.ExtractImage(defaultSourceContainersImages, defaultContainerImage)
+		con := NewContainer(defaultContainerImage)
+		errcon := con.LoadConfigJson()
+		if errcon != nil {
+			log.Fatalf("Error opening container index json")
+		}
 		err = Unshare(CLONE_NEWNS)
 		if err != 0 {
 			log.Fatal("Error trying to unshare ", ": ", err)
