@@ -8,11 +8,14 @@ import (
 	"rocked/specs"
 
 	"log/slog"
+
+	"github.com/opencontainers/go-digest"
 )
 
 type Container struct {
 	Path     string
 	JsonPath string
+	Index    specs.Index
 }
 
 func NewContainer(path string) *Container {
@@ -42,5 +45,18 @@ func (c *Container) LoadConfigJson() error {
 		return err
 	}
 	slog.Debug("Container: ", "index", index)
+	c.Index = index
 	return nil
+}
+
+func (c *Container) BlobExists(algo digest.Algorithm, digest string) bool {
+	digestPath := c.Path + "/blobs/" + algo.String() + "/" + digest
+	slog.Debug("Container: BlobExists", "digest path", digestPath)
+	_, err := os.Stat(digestPath)
+	if os.IsNotExist(err) {
+		slog.Debug("Container: BlobExists", "return", false)
+		return false
+	}
+	slog.Debug("Container: BlobExists", "return", true)
+	return true
 }
