@@ -88,6 +88,11 @@ func run(args []string) {
 		utils.ExtractImage(defaultSourceContainersImages, defaultContainerImage)
 		con := NewContainer(defaultContainerImage)
 		errcon := con.LoadConfigJson()
+		slog.Debug("Child", "Manifests", con.Index.Manifests)
+		for _, manifest := range con.Index.Manifests {
+			exists := con.BlobExists(manifest.Digest.Algorithm(), manifest.Digest.Encoded())
+			slog.Debug("Child", "manifest", manifest.Annotations["org.opencontainers.image.ref.name"], "exists", exists)
+		}
 		if errcon != nil {
 			log.Fatalf("Error opening container index json")
 		}
