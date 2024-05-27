@@ -5,7 +5,7 @@ import (
 )
 
 var (
-	VIRTFS = []string{"proc", "sys", "devtmpfs"}
+	VIRTFS = []string{"proc", "sys", "devtmpfs", "overlay"}
 )
 
 // Checks if a path (either file or directory) exists

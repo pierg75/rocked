@@ -205,8 +205,8 @@ func Chroot(path string) (err syscall.Errno) {
 // Mount file systems.
 // source and destination must be valid paths.
 // It takes an integer flags
-func Mount(source, dest, fstype string, flags uintptr) (err syscall.Errno) {
-	slog.Debug("Mount", "pid", os.Getpid(), "user", os.Geteuid(), "source", source, "dest", dest, "type", fstype)
+func Mount(source, dest, fstype string, flags uintptr, options string) (err syscall.Errno) {
+	slog.Debug("Mount", "pid", os.Getpid(), "user", os.Geteuid(), "source", source, "dest", dest, "type", fstype, "options", options)
 	if len(source) == 0 || len(dest) == 0 {
 		return syscall.Errno(syscall.EINVAL)
 	}
@@ -234,7 +234,12 @@ func Mount(source, dest, fstype string, flags uintptr) (err syscall.Errno) {
 	if e != nil {
 		log.Fatal("Error converting type to pointer")
 	}
-	_, _, error := syscall.RawSyscall6(MOUNT, uintptr(unsafe.Pointer(sourcep)), uintptr(unsafe.Pointer(destp)), uintptr(unsafe.Pointer(typep)), uintptr(flags), 0, 0)
+
+	optionsp, e := syscall.BytePtrFromString(options)
+	if e != nil {
+		log.Fatal("Error converting type to pointer")
+	}
+	_, _, error := syscall.RawSyscall6(MOUNT, uintptr(unsafe.Pointer(sourcep)), uintptr(unsafe.Pointer(destp)), uintptr(unsafe.Pointer(typep)), uintptr(flags), uintptr(unsafe.Pointer(optionsp)), 0)
 	slog.Debug("Mount returns ", "error", error)
 	return error
 

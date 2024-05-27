@@ -138,6 +138,7 @@ func setContainer(image string) error {
 //go:norace
 //go:nocheckptr
 func runFork(path string, args []string) syscall.Errno {
+	slog.Debug("runFork", "path", path, "args", args)
 	pid, err := Fork(nil)
 	if err != 0 {
 		fmt.Printf("Error forking: %v", int(err))
@@ -160,38 +161,39 @@ func runFork(path string, args []string) syscall.Errno {
 	if err != 0 {
 		log.Fatal("Error trying to unshare ", ": ", err)
 	}
-	err := Mount("overlay", proc_target, "overlay", 0)
+	err = SetMount("/", MS_REC|MS_PRIVATE)
 	if err != 0 {
-		log.Printf("Error mounting proc on the directory %v: %v", proc_target, err)
+		log.Fatal("Error trying to switch root as private: ", err)
+	}
+	mergepath := path + "/overlay/merge"
+	err = Mount("overlay", mergepath, "overlay", MS_MGC_VAL, "lowerdir=/tmp/containers/fedora/image_root/,upperdir=/tmp/containers/fedora/overlay/upper,workdir=/tmp/containers/fedora/overlay/work")
+	if err != 0 {
+		log.Printf("Error mounting overlay on the directory %v: %v", mergepath, err)
 		return err
 	}
-	//err = SetMount("/", MS_REC|MS_PRIVATE)
-	//if err != 0 {
-	//	log.Fatal("Error trying to switch root as private: ", err)
-	//}
 	//// This is to temporally have a mountpoint for pivot_root
 	//err = Mount(path, path, "", MS_BIND)
 	//if err != 0 {
 	//	log.Fatal("Error bind mount ", path, "on ", path, ": ", err)
 	//}
 
-	//err = mount_virtfs(path)
-	//defer umount_virtfs(path)
-	//if err != 0 {
-	//	return err
-	//}
-	//err = Chdir(path)
-	//if err != 0 {
-	//	log.Fatal("Error trying to chdir into ", path, ": ", err)
-	//}
-	//err = PivotRoot(".", ".")
-	//if err != 0 {
-	//	log.Fatal("Error trying to pivot_root into ", path, ": ", err)
-	//}
-	//err = Umount(".", syscall.MNT_DETACH)
-	//if err != 0 {
-	//	log.Fatal("Error trying to umount '.'", err)
-	//}
+	err = mount_virtfs(mergepath)
+	defer umount_virtfs(mergepath)
+	if err != 0 {
+		return err
+	}
+	err = Chdir(mergepath)
+	if err != 0 {
+		log.Fatal("Error trying to chdir into ", mergepath, ": ", err)
+	}
+	err = PivotRoot(".", ".")
+	if err != 0 {
+		log.Fatal("Error trying to pivot_root into ", path, ": ", err)
+	}
+	err = Umount(".", syscall.MNT_DETACH)
+	if err != 0 {
+		log.Fatal("Error trying to umount '.'", err)
+	}
 	// Exec
 	a := ExecArgs{
 		Exe:     args[0],
