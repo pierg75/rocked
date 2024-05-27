@@ -27,17 +27,17 @@ func mount_virtfs(path string) syscall.Errno {
 	proc_target := path + "/proc"
 	sys_target := path + "/sys"
 	dev_target := path + "/dev"
-	err := Mount("proc", proc_target, "proc", 0)
+	err := Mount("proc", proc_target, "proc", 0, "")
 	if err != 0 {
 		log.Printf("Error mounting proc on the directory %v: %v", proc_target, err)
 		return err
 	}
-	err = Mount("sys", sys_target, "sysfs", 0)
+	err = Mount("sys", sys_target, "sysfs", 0, "")
 	if err != 0 {
 		log.Printf("Error mounting sys on the directory %v: %v", sys_target, err)
 		return err
 	}
-	err = Mount("devtmpfs", dev_target, "devtmpfs", MS_MGC_VAL)
+	err = Mount("devtmpfs", dev_target, "devtmpfs", MS_MGC_VAL, "")
 	if err != 0 {
 		log.Printf("Error mounting dev on the directory %v: %v", dev_target, err)
 		return err
