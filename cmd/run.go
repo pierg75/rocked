@@ -5,8 +5,10 @@ package cmd
 
 import (
 	"fmt"
+	"io"
 	"log"
 	"os"
+	"os/exec"
 	"syscall"
 
 	"log/slog"
@@ -65,6 +67,147 @@ func umount_virtfs(path string) syscall.Errno {
 	return 0
 }
 
+func copy(src, dst string) (int64, error) {
+	sourceFileStat, err := os.Stat(src)
+	if err != nil {
+		return 0, err
+	}
+
+	if !sourceFileStat.Mode().IsRegular() {
+		return 0, fmt.Errorf("%s is not a regular file", src)
+	}
+
+	source, err := os.Open(src)
+	if err != nil {
+		return 0, err
+	}
+	defer source.Close()
+
+	destination, err := os.Create(dst)
+	if err != nil {
+		return 0, err
+	}
+	defer destination.Close()
+	nBytes, err := io.Copy(destination, source)
+	return nBytes, err
+}
+
+func setContainer(image string) error {
+	var defaultContainerImage string = base_path + image
+	var defaultSourceContainersImages string = "blobs/container_images/" + image + ".tar"
+	utils.ExtractImage(defaultSourceContainersImages, defaultContainerImage)
+	con := NewContainer(defaultContainerImage)
+	errcon := con.LoadConfigJson()
+	if errcon != nil {
+		return errcon
+	}
+	slog.Debug("setContainert", "Manifests", con.Index.Manifests)
+	for _, manifest := range con.Index.Manifests {
+		exists := con.BlobExists(manifest.Digest.Algorithm(), manifest.Digest.Encoded())
+		if exists {
+			slog.Debug("setContainer", "manifest", manifest.Annotations["org.opencontainers.image.ref.name"], "exists", exists)
+			err := con.ReadImageManifest(manifest)
+			if err != nil {
+				return err
+			}
+			err = con.ReadImageConfig()
+			if err != nil {
+				return err
+			}
+
+			for _, layer := range con.ImageManifest.Layers {
+				// Extract the base layer into defaultContainerImage+"image_root"
+				layerPath := defaultContainerImage + "/blobs/" + string(layer.Digest.Algorithm()) + "/" + string(layer.Digest.Encoded())
+				slog.Debug("setContainer", "layer path", layerPath)
+				//utils.Gunzip(layerPath, "/home/plambri/tempunzipped")
+				cmd := exec.Command("tar", "xvf", layerPath, "-C", defaultContainerImage+"/image_root")
+				if err := cmd.Run(); err != nil {
+					log.Printf("Error while unpacking the layer %v: error %v", layerPath, err)
+					return err
+				}
+			}
+		}
+	}
+	return nil
+}
+
+// This function should basically do all the work for the child process.
+// It should not be able to return, but only execute the process invoked.
+//
+//go:noinline
+//go:norace
+//go:nocheckptr
+func runFork(path string, args []string) syscall.Errno {
+	pid, err := Fork(nil)
+	if err != 0 {
+		fmt.Printf("Error forking: %v", int(err))
+		return err
+	}
+	if pid != 0 {
+		return 0
+	}
+
+	slog.Debug("Child", "pid", pid, "pid thread", os.Getpid(), "pid parent", os.Getppid())
+	slog.Debug("Child", "exec", args[0], "options", args)
+	// Untar the container image into a predefined root
+	// For now let's use hardocded paths
+	errc := setContainer(image)
+	if errc != nil {
+		log.Fatal("Error trying to setup container ", ": ", err)
+	}
+
+	err = Unshare(CLONE_NEWNS)
+	if err != 0 {
+		log.Fatal("Error trying to unshare ", ": ", err)
+	}
+	err := Mount("overlay", proc_target, "overlay", 0)
+	if err != 0 {
+		log.Printf("Error mounting proc on the directory %v: %v", proc_target, err)
+		return err
+	}
+	//err = SetMount("/", MS_REC|MS_PRIVATE)
+	//if err != 0 {
+	//	log.Fatal("Error trying to switch root as private: ", err)
+	//}
+	//// This is to temporally have a mountpoint for pivot_root
+	//err = Mount(path, path, "", MS_BIND)
+	//if err != 0 {
+	//	log.Fatal("Error bind mount ", path, "on ", path, ": ", err)
+	//}
+
+	//err = mount_virtfs(path)
+	//defer umount_virtfs(path)
+	//if err != 0 {
+	//	return err
+	//}
+	//err = Chdir(path)
+	//if err != 0 {
+	//	log.Fatal("Error trying to chdir into ", path, ": ", err)
+	//}
+	//err = PivotRoot(".", ".")
+	//if err != 0 {
+	//	log.Fatal("Error trying to pivot_root into ", path, ": ", err)
+	//}
+	//err = Umount(".", syscall.MNT_DETACH)
+	//if err != 0 {
+	//	log.Fatal("Error trying to umount '.'", err)
+	//}
+	// Exec
+	a := ExecArgs{
+		Exe:     args[0],
+		Exeargs: args,
+	}
+	a.Env = os.Environ()
+	for _, entry := range envVariables {
+		a.Env = append(a.Env, entry)
+	}
+	err = Exec(&a)
+	if err != 0 {
+		log.Fatal("Error executing ", args[0], ": ", err)
+	}
+	return 0
+}
+
 func run(args []string) {
 	ppid := os.Getpid()
 	slog.Debug("Forking", "pid thread", ppid, "user", os.Getuid())
@@ -73,79 +216,9 @@ func run(args []string) {
 		return
 	}
 	path := base_path + image
-	pid, err := Fork(nil)
-	if err != 0 {
-		fmt.Printf("Error forking: %v", int(err))
-		return
-	}
-	if int(pid) == 0 {
-		slog.Debug("Child", "pid", pid, "pid thread", os.Getpid(), "pid parent", os.Getppid())
-		slog.Debug("Child", "exec", args[0], "options", args)
-		// Untar the container image into a predefined root
-		// For now let's use hardocded paths
-		var defaultContainerImage string = "/tmp/containers/" + image
-		var defaultSourceContainersImages string = "blobs/container_images/" + image + ".tar"
-		utils.ExtractImage(defaultSourceContainersImages, defaultContainerImage)
-		con := NewContainer(defaultContainerImage)
-		errcon := con.LoadConfigJson()
-		slog.Debug("Child", "Manifests", con.Index.Manifests)
-		for _, manifest := range con.Index.Manifests {
-			exists := con.BlobExists(manifest.Digest.Algorithm(), manifest.Digest.Encoded())
-			slog.Debug("Child", "manifest", manifest.Annotations["org.opencontainers.image.ref.name"], "exists", exists)
-		}
-		if errcon != nil {
-			log.Fatalf("Error opening container index json")
-		}
-		err = Unshare(CLONE_NEWNS)
-		if err != 0 {
-			log.Fatal("Error trying to unshare ", ": ", err)
-		}
-		err = SetMount("/", MS_REC|MS_PRIVATE)
-		if err != 0 {
-			log.Fatal("Error trying to switch root as private: ", err)
-		}
-		// This is to temporally have a mountpoint for pivot_root
-		err = Mount(path, path, "", MS_BIND)
-		if err != 0 {
-			log.Fatal("Error bind mount ", path, "on ", path, ": ", err)
-		}
-
-		err := mount_virtfs(path)
-		defer umount_virtfs(path)
-		if err != 0 {
-			return
-		}
-		err = Chdir(path)
-		if err != 0 {
-			log.Fatal("Error trying to chdir into ", path, ": ", err)
-		}
-		err = PivotRoot(".", ".")
-		if err != 0 {
-			log.Fatal("Error trying to pivot_root into ", path, ": ", err)
-		}
-		err = Umount(".", syscall.MNT_DETACH)
-		if err != 0 {
-			log.Fatal("Error trying to umount '.'", err)
-		}
-		// Exec
-		a := ExecArgs{
-			Exe:     args[0],
-			Exeargs: args,
-		}
-		a.Env = os.Environ()
-		for _, entry := range envVariables {
-			a.Env = append(a.Env, entry)
-		}
-		err = Exec(&a)
-		if err != 0 {
-			log.Fatal("Error executing ", args[0], ": ", err)
-		}
-	} else {
-		// Wait
-		slog.Debug("Parent", "child pid", pid, "pid thread", os.Getpid())
-		Wait(int(pid))
-		return
-	}
+	_ = runFork(path, args)
+	// Wait
+	// Wait(childpid)
 	return
 }
 
