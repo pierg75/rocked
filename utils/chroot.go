@@ -2,8 +2,11 @@ package utils
 
 import (
 	"archive/tar"
+	"compress/gzip"
+	"fmt"
 	"io"
 	"log"
+	"log/slog"
 	"os"
 	"os/user"
 	"path/filepath"
@@ -23,9 +26,47 @@ func CleanupChrootDir(path string, create bool) (err error) {
 	return nil
 }
 
+// Unzip a file into a new unzipped file
+func Gunzip(archive, dest string) error {
+	gzippedFile, err := os.Open(archive)
+	if err != nil {
+		fmt.Printf("Error opening the file\n")
+		return err
+	}
+	defer gzippedFile.Close()
+
+	// Create a new gzip reader
+	gzipReader, err := gzip.NewReader(gzippedFile)
+	if err != nil {
+		fmt.Printf("Error getting a new reader\n")
+		return err
+	}
+	defer gzipReader.Close()
+
+	// Create a new file to hold the uncompressed data
+	uncompressedFile, err := os.Create(dest)
+	if err != nil {
+		fmt.Printf("Error creating dest\n")
+		return err
+	}
+	defer uncompressedFile.Close()
+
+	// Copy the contents of the gzip reader to the new file
+	_, err = io.Copy(uncompressedFile, gzipReader)
+	if err != nil {
+		fmt.Printf("Error copying the file\n")
+		return err
+	}
+	return nil
+}
+
 // Extract a tar archive into dest.
 // For now this supports only tar archives, no compression.
 func ExtractImage(archive, dest string) error {
+	slog.Debug("ExtractImage", "archive", archive, "dest", dest)
+	if !PathExists(dest) {
+		os.MkdirAll(dest, 0777)
+	}
 	reader, err := os.Open(archive)
 	if err != nil {
 		return err
