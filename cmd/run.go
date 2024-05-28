@@ -137,15 +137,16 @@ func setContainer(image string) error {
 //go:noinline
 //go:norace
 //go:nocheckptr
-func runFork(path string, args []string) syscall.Errno {
+func runFork(path string, args []string) (int, syscall.Errno) {
 	slog.Debug("runFork", "path", path, "args", args)
 	pid, err := Fork(nil)
 	if err != 0 {
 		fmt.Printf("Error forking: %v", int(err))
-		return err
+		return -1, err
 	}
+	//Parent
 	if pid != 0 {
-		return 0
+		return int(pid), 0
 	}
 
 	slog.Debug("Child", "pid", pid, "pid thread", os.Getpid(), "pid parent", os.Getppid())
@@ -169,7 +170,7 @@ func runFork(path string, args []string) syscall.Errno {
 	err = Mount("overlay", mergepath, "overlay", MS_MGC_VAL, "lowerdir=/tmp/containers/fedora/image_root/,upperdir=/tmp/containers/fedora/overlay/upper,workdir=/tmp/containers/fedora/overlay/work")
 	if err != 0 {
 		log.Printf("Error mounting overlay on the directory %v: %v", mergepath, err)
-		return err
+		return -1, err
 	}
 	//// This is to temporally have a mountpoint for pivot_root
 	//err = Mount(path, path, "", MS_BIND)
@@ -180,7 +181,7 @@ func runFork(path string, args []string) syscall.Errno {
 	err = mount_virtfs(mergepath)
 	defer umount_virtfs(mergepath)
 	if err != 0 {
-		return err
+		return -1, err
 	}
 	err = Chdir(mergepath)
 	if err != 0 {
@@ -207,7 +208,7 @@ func runFork(path string, args []string) syscall.Errno {
 	if err != 0 {
 		log.Fatal("Error executing ", args[0], ": ", err)
 	}
-	return 0
+	return 0, 0
 }
 
 func run(args []string) {
@@ -218,9 +219,12 @@ func run(args []string) {
 		return
 	}
 	path := base_path + image
-	_ = runFork(path, args)
+	childpid, err := runFork(path, args)
+	if err != 0 {
+		log.Printf("There was an error while forking: %v", err)
+	}
 	// Wait
-	// Wait(childpid)
+	Wait(childpid)
 	return
 }
 
