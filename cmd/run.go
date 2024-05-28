@@ -172,6 +172,7 @@ func runFork(path string, args []string) (int, syscall.Errno) {
 		log.Printf("Error mounting overlay on the directory %v: %v", mergepath, err)
 		return -1, err
 	}
+	log.Println("Created a new root fs for our container :", path+"/overlay/")
 	//// This is to temporally have a mountpoint for pivot_root
 	//err = Mount(path, path, "", MS_BIND)
 	//if err != 0 {
@@ -225,6 +226,7 @@ func run(args []string) {
 	}
 	// Wait
 	Wait(childpid)
+	log.Printf("%v exited\n", childpid)
 	return
 }
 
