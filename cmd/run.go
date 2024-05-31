@@ -141,6 +141,10 @@ func runFork(path string, args []string) (int, syscall.Errno) {
 		log.Fatal("Error trying to switch root as private: ", err)
 	}
 	mergepath := path + "/overlay/merge"
+	// Create the necessary directories
+	os.MkdirAll(path+"/overlay/work", 0770)
+	os.MkdirAll(path+"/overlay/upper", 0770)
+	os.MkdirAll(path+"/overlay/merge", 0770)
 	err = Mount("overlay", mergepath, "overlay", MS_MGC_VAL, "lowerdir=/tmp/containers/fedora/image_root/,upperdir=/tmp/containers/fedora/overlay/upper,workdir=/tmp/containers/fedora/overlay/work")
 	if err != 0 {
 		log.Printf("Error mounting overlay on the directory %v: %v", mergepath, err)
