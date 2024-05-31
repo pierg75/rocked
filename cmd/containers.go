@@ -5,7 +5,9 @@ import (
 	"io"
 	"log"
 	"os"
+	"os/exec"
 	"rocked/specs"
+	"rocked/utils"
 
 	"log/slog"
 
@@ -142,6 +144,41 @@ func (c *Container) ReadImageConfig() error {
 	c.Image = configjson
 	return nil
 }
+
+func (c *Container) ExpandAllManifest(defaultContainerImage string) error {
+	for _, manifest := range c.Index.Manifests {
+		exists := c.BlobExists(manifest.Digest.Algorithm(), manifest.Digest.Encoded())
+		if exists {
+			slog.Debug("setContainer", "manifest", manifest.Annotations["org.opencontainers.image.ref.name"], "exists", exists)
+			err := c.ReadImageManifest(manifest)
+			if err != nil {
+				return err
+			}
+			err = c.ReadImageConfig()
+			if err != nil {
+				return err
+			}
+
+			for _, layer := range c.ImageManifest.Layers {
+				// Extract the base layer into defaultContainerImage+"image_root"
+				layerPath := defaultContainerImage + "/blobs/" + string(layer.Digest.Algorithm()) + "/" + string(layer.Digest.Encoded())
+				slog.Debug("setContainer", "layer path", layerPath)
+				//utils.Gunzip(layerPath, "/home/plambri/tempunzipped")
+				containerImageRoot := defaultContainerImage + "/image_root"
+				if !utils.PathExists(containerImageRoot) {
+					os.Mkdir(containerImageRoot, 0770)
+				}
+				cmd := exec.Command("tar", "xvf", layerPath, "-C", containerImageRoot)
+				if err := cmd.Run(); err != nil {
+					log.Printf("Error while unpacking the layer %v: error %v", layerPath, err)
+					return err
+				}
+			}
+		}
+	}
+	return nil
+}
+
 func (c *Container) GetDigestPath() {
 
 }

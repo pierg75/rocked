@@ -8,7 +8,6 @@ import (
 	"io"
 	"log"
 	"os"
-	"os/exec"
 	"syscall"
 
 	"log/slog"
@@ -92,8 +91,8 @@ func copy(src, dst string) (int64, error) {
 	return nBytes, err
 }
 
-func setContainer(image string) error {
-	var defaultContainerImage string = base_path + image
+func setContainer(image, path string) error {
+	var defaultContainerImage string = path
 	var defaultSourceContainersImages string = "blobs/container_images/" + image + ".tar"
 	utils.ExtractImage(defaultSourceContainersImages, defaultContainerImage)
 	con := NewContainer(defaultContainerImage)
@@ -102,32 +101,7 @@ func setContainer(image string) error {
 		return errcon
 	}
 	slog.Debug("setContainert", "Manifests", con.Index.Manifests)
-	for _, manifest := range con.Index.Manifests {
-		exists := con.BlobExists(manifest.Digest.Algorithm(), manifest.Digest.Encoded())
-		if exists {
-			slog.Debug("setContainer", "manifest", manifest.Annotations["org.opencontainers.image.ref.name"], "exists", exists)
-			err := con.ReadImageManifest(manifest)
-			if err != nil {
-				return err
-			}
-			err = con.ReadImageConfig()
-			if err != nil {
-				return err
-			}
-
-			for _, layer := range con.ImageManifest.Layers {
-				// Extract the base layer into defaultContainerImage+"image_root"
-				layerPath := defaultContainerImage + "/blobs/" + string(layer.Digest.Algorithm()) + "/" + string(layer.Digest.Encoded())
-				slog.Debug("setContainer", "layer path", layerPath)
-				//utils.Gunzip(layerPath, "/home/plambri/tempunzipped")
-				cmd := exec.Command("tar", "xvf", layerPath, "-C", defaultContainerImage+"/image_root")
-				if err := cmd.Run(); err != nil {
-					log.Printf("Error while unpacking the layer %v: error %v", layerPath, err)
-					return err
-				}
-			}
-		}
-	}
+	con.ExpandAllManifest(defaultContainerImage)
 	return nil
 }
 
@@ -153,7 +127,7 @@ func runFork(path string, args []string) (int, syscall.Errno) {
 	slog.Debug("Child", "exec", args[0], "options", args)
 	// Untar the container image into a predefined root
 	// For now let's use hardocded paths
-	errc := setContainer(image)
+	errc := setContainer(image, path)
 	if errc != nil {
 		log.Fatal("Error trying to setup container ", ": ", err)
 	}
