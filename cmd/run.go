@@ -13,6 +13,7 @@ import (
 	"log/slog"
 	"rocked/utils"
 
+	"github.com/google/uuid"
 	"github.com/spf13/cobra"
 )
 
@@ -91,18 +92,23 @@ func copy(src, dst string) (int64, error) {
 	return nBytes, err
 }
 
-func setContainer(image, path string) error {
-	var defaultContainerImage string = path
+func setContainer(image, base_path string) (*Container, error) {
+	id := uuid.New()
+	var defaultContainerImage string = base_path + "/" + id.String()
 	var defaultSourceContainersImages string = "blobs/container_images/" + image + ".tar"
 	utils.ExtractImage(defaultSourceContainersImages, defaultContainerImage)
 	con := NewContainer(defaultContainerImage)
 	errcon := con.LoadConfigJson()
 	if errcon != nil {
-		return errcon
+		return nil, errcon
 	}
 	slog.Debug("setContainert", "Manifests", con.Index.Manifests)
 	con.ExpandAllManifest(defaultContainerImage)
-	return nil
+	// Create the necessary directories
+	os.MkdirAll(con.Path+"/overlay/work", 0770)
+	os.MkdirAll(con.Path+"/overlay/upper", 0770)
+	os.MkdirAll(con.Path+"/overlay/merge", 0770)
+	return con, nil
 }
 
 // This function should basically do all the work for the child process.
@@ -111,8 +117,8 @@ func setContainer(image, path string) error {
 //go:noinline
 //go:norace
 //go:nocheckptr
-func runFork(path string, args []string) (int, syscall.Errno) {
-	slog.Debug("runFork", "path", path, "args", args)
+func runFork(base_path, image string, args []string) (int, syscall.Errno) {
+	slog.Debug("runFork", "base_path", base_path, "image", image, "args", args)
 	pid, err := Fork(nil)
 	if err != 0 {
 		fmt.Printf("Error forking: %v", int(err))
@@ -127,12 +133,12 @@ func runFork(path string, args []string) (int, syscall.Errno) {
 	slog.Debug("Child", "exec", args[0], "options", args)
 	// Untar the container image into a predefined root
 	// For now let's use hardocded paths
-	errc := setContainer(image, path)
+	con, errc := setContainer(image, base_path)
 	if errc != nil {
 		log.Fatal("Error trying to setup container ", ": ", err)
 	}
 
-	err = Unshare(CLONE_NEWNS)
+	err = Unshare(CLONE_NEWNS | CLONE_NEWUTS)
 	if err != 0 {
 		log.Fatal("Error trying to unshare ", ": ", err)
 	}
@@ -140,17 +146,13 @@ func runFork(path string, args []string) (int, syscall.Errno) {
 	if err != 0 {
 		log.Fatal("Error trying to switch root as private: ", err)
 	}
-	mergepath := path + "/overlay/merge"
-	// Create the necessary directories
-	os.MkdirAll(path+"/overlay/work", 0770)
-	os.MkdirAll(path+"/overlay/upper", 0770)
-	os.MkdirAll(path+"/overlay/merge", 0770)
-	err = Mount("overlay", mergepath, "overlay", MS_MGC_VAL, "lowerdir=/tmp/containers/fedora/image_root/,upperdir=/tmp/containers/fedora/overlay/upper,workdir=/tmp/containers/fedora/overlay/work")
+	mergepath := con.Path + "/overlay/merge"
+	err = Mount("overlay", mergepath, "overlay", MS_MGC_VAL, "lowerdir="+con.Path+"/image_root/,upperdir="+con.Path+"/overlay/upper,workdir="+con.Path+"/overlay/work")
 	if err != 0 {
 		log.Printf("Error mounting overlay on the directory %v: %v", mergepath, err)
 		return -1, err
 	}
-	log.Println("Created a new root fs for our container :", path+"/overlay/")
+	log.Println("Created a new root fs for our container :", con.Path+"/overlay/")
 	//// This is to temporally have a mountpoint for pivot_root
 	//err = Mount(path, path, "", MS_BIND)
 	//if err != 0 {
@@ -168,7 +170,7 @@ func runFork(path string, args []string) (int, syscall.Errno) {
 	}
 	err = PivotRoot(".", ".")
 	if err != 0 {
-		log.Fatal("Error trying to pivot_root into ", path, ": ", err)
+		log.Fatal("Error trying to pivot_root into ", con.Path, ": ", err)
 	}
 	err = Umount(".", syscall.MNT_DETACH)
 	if err != 0 {
@@ -197,8 +199,7 @@ func run(args []string) {
 		fmt.Printf("You need to specify a program to run\n")
 		return
 	}
-	path := base_path + image
-	childpid, err := runFork(path, args)
+	childpid, err := runFork(base_path, image, args)
 	if err != 0 {
 		log.Printf("There was an error while forking: %v", err)
 	}
