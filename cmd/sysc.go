@@ -14,15 +14,16 @@ import (
 )
 
 var (
-	EXECVE    uintptr = 59
-	WAIT4     uintptr = 61
-	CHDIR     uintptr = 80
-	PIVOTROOT uintptr = 155
-	CHROOT    uintptr = 161
-	MOUNT     uintptr = 165
-	UMOUNT    uintptr = 166
-	UNSHARE   uintptr = 272
-	CLONE3    uintptr = 435
+	EXECVE      uintptr = 59
+	WAIT4       uintptr = 61
+	SETHOSTNAME uintptr = 74
+	CHDIR       uintptr = 80
+	PIVOTROOT   uintptr = 155
+	CHROOT      uintptr = 161
+	MOUNT       uintptr = 165
+	UMOUNT      uintptr = 166
+	UNSHARE     uintptr = 272
+	CLONE3      uintptr = 435
 )
 
 type CloneArgs struct {
@@ -334,4 +335,18 @@ func PivotRoot(new_root, put_old string) (err syscall.Errno) {
 	slog.Debug("PivotRoot returns ", "error", error)
 	return error
 
+}
+
+// Set container hostname
+func SetHostname(hostname string, size int) (err syscall.Errno) {
+	slog.Debug("SetHostname", "pid", os.Getpid(), "user", os.Geteuid(), "hostname", hostname, "len", size)
+	if size == 0 || len(hostname) != size {
+		return syscall.EINVAL
+	}
+	hostnamep, e := syscall.BytePtrFromString(hostname)
+	if e != nil {
+		log.Fatal("Error converting hostname to pointer")
+	}
+	_, _, error := syscall.RawSyscall(SETHOSTNAME, uintptr(unsafe.Pointer(hostnamep)), uintptr(size), 0)
+	return error
 }

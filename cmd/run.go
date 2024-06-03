@@ -13,7 +13,6 @@ import (
 	"log/slog"
 	"rocked/utils"
 
-	"github.com/google/uuid"
 	"github.com/spf13/cobra"
 )
 
@@ -93,17 +92,16 @@ func copy(src, dst string) (int64, error) {
 }
 
 func setContainer(image, base_path string) (*Container, error) {
-	id := uuid.New()
-	var defaultContainerImage string = base_path + "/" + id.String()
+	slog.Debug("setContainert", "image", image, "base_path", base_path)
+	con := NewContainer(base_path)
 	var defaultSourceContainersImages string = "blobs/container_images/" + image + ".tar"
-	utils.ExtractImage(defaultSourceContainersImages, defaultContainerImage)
-	con := NewContainer(defaultContainerImage)
+	utils.ExtractImage(defaultSourceContainersImages, con.Path)
 	errcon := con.LoadConfigJson()
 	if errcon != nil {
 		return nil, errcon
 	}
 	slog.Debug("setContainert", "Manifests", con.Index.Manifests)
-	con.ExpandAllManifest(defaultContainerImage)
+	con.ExpandAllManifest(con.Path)
 	// Create the necessary directories
 	os.MkdirAll(con.Path+"/overlay/work", 0770)
 	os.MkdirAll(con.Path+"/overlay/upper", 0770)
@@ -135,7 +133,7 @@ func runFork(base_path, image string, args []string) (int, syscall.Errno) {
 	// For now let's use hardocded paths
 	con, errc := setContainer(image, base_path)
 	if errc != nil {
-		log.Fatal("Error trying to setup container ", ": ", err)
+		log.Fatal("Error trying to setup container ", ": ", errc)
 	}
 
 	err = Unshare(CLONE_NEWNS | CLONE_NEWUTS)
@@ -176,6 +174,11 @@ func runFork(base_path, image string, args []string) (int, syscall.Errno) {
 	if err != 0 {
 		log.Fatal("Error trying to umount '.'", err)
 	}
+	err = SetHostname(con.id, len(con.id))
+	if err != 0 {
+		log.Fatal("Error trying to set the hostname ", err)
+	}
+
 	// Exec
 	a := ExecArgs{
 		Exe:     args[0],

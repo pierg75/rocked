@@ -11,6 +11,7 @@ import (
 
 	"log/slog"
 
+	"github.com/google/uuid"
 	"github.com/opencontainers/go-digest"
 )
 
@@ -42,19 +43,24 @@ func IsValidAlgorithm(algo string) bool {
 type Container struct {
 	Path          string
 	JsonPath      string
+	id            string
 	Index         specs.Index
 	ImageManifest specs.Manifest
 	Image         specs.Image
 }
 
 func NewContainer(path string) *Container {
-	jpath := path + "/index.json"
-	slog.Debug("Container: Initialising new container", "path", path, "JsonPath", jpath)
+	slog.Debug("Container: Initialising new container", "path", path)
 	if len(path) == 0 {
 		log.Panic("Path cannot be empty")
 	}
+	id := uuid.New().String()
+	cpath := path + id
+	jpath := cpath + "/index.json"
+	slog.Debug("Container: Initialising new container", "cpath", cpath, "JsonPath", jpath)
 	return &Container{
-		Path:     path,
+		id:       id,
+		Path:     cpath,
 		JsonPath: jpath,
 	}
 }
@@ -146,6 +152,7 @@ func (c *Container) ReadImageConfig() error {
 }
 
 func (c *Container) ExpandAllManifest(defaultContainerImage string) error {
+	slog.Debug("ExpandAllManifest", "defaultContainerImage", defaultContainerImage)
 	for _, manifest := range c.Index.Manifests {
 		exists := c.BlobExists(manifest.Digest.Algorithm(), manifest.Digest.Encoded())
 		if exists {
