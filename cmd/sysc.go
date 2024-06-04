@@ -16,12 +16,12 @@ import (
 var (
 	EXECVE      uintptr = 59
 	WAIT4       uintptr = 61
-	SETHOSTNAME uintptr = 74
 	CHDIR       uintptr = 80
 	PIVOTROOT   uintptr = 155
 	CHROOT      uintptr = 161
 	MOUNT       uintptr = 165
 	UMOUNT      uintptr = 166
+	SETHOSTNAME uintptr = 170
 	UNSHARE     uintptr = 272
 	CLONE3      uintptr = 435
 )

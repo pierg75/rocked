@@ -144,6 +144,10 @@ func runFork(base_path, image string, args []string) (int, syscall.Errno) {
 	if err != 0 {
 		log.Fatal("Error trying to switch root as private: ", err)
 	}
+	err = SetHostname(con.id, len(con.id))
+	if err != 0 {
+		log.Println("Error trying to set the hostname ", err)
+	}
 	mergepath := con.Path + "/overlay/merge"
 	err = Mount("overlay", mergepath, "overlay", MS_MGC_VAL, "lowerdir="+con.Path+"/image_root/,upperdir="+con.Path+"/overlay/upper,workdir="+con.Path+"/overlay/work")
 	if err != 0 {
@@ -173,10 +177,6 @@ func runFork(base_path, image string, args []string) (int, syscall.Errno) {
 	err = Umount(".", syscall.MNT_DETACH)
 	if err != 0 {
 		log.Fatal("Error trying to umount '.'", err)
-	}
-	err = SetHostname(con.id, len(con.id))
-	if err != 0 {
-		log.Fatal("Error trying to set the hostname ", err)
 	}
 
 	// Exec
