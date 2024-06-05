@@ -192,6 +192,13 @@ func runFork(base_path, image string, args []string) (int, syscall.Errno) {
 	if err != 0 {
 		log.Fatal("Error executing ", args[0], ": ", err)
 	}
+	// Clean up everything before returning
+	defer func() {
+		er := os.RemoveAll(con.Path)
+		if er != nil {
+			log.Println("Error removing ", con.Path)
+		}
+	}()
 	return 0, 0
 }
 
