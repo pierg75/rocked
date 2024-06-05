@@ -117,7 +117,10 @@ func setContainer(image, base_path string) (*Container, error) {
 //go:nocheckptr
 func runFork(base_path, image string, args []string) (int, syscall.Errno) {
 	slog.Debug("runFork", "base_path", base_path, "image", image, "args", args)
-	pid, err := Fork(nil)
+	cargs := CloneArgs{
+		flags: CLONE_VFORK | CLONE_FILES | CLONE_NEWPID,
+	}
+	pid, err := Fork(&cargs)
 	if err != 0 {
 		fmt.Printf("Error forking: %v", int(err))
 		return -1, err
