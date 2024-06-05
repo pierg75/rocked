@@ -48,30 +48,30 @@ type ExecArgs struct {
 
 // Fork flags
 var (
-	CLONE_VM             uintptr = 0x00000100 /* set if VM shared between processes */
-	CLONE_FS             uintptr = 0x00000200 /* set if fs info shared between processes */
-	CLONE_FILES          uintptr = 0x00000400 /* set if open files shared between processes */
-	CLONE_SIGHAND        uintptr = 0x00000800 /* set if signal handlers and blocked signals shared */
-	CLONE_PIDFD          uintptr = 0x00001000 /* set if a pidfd should be placed in parent */
-	CLONE_PTRACE         uintptr = 0x00002000 /* set if we want to let tracing continue on the child too */
-	CLONE_VFORK          uintptr = 0x00004000 /* set if the parent wants the child to wake it up on mm_release */
-	CLONE_PARENT         uintptr = 0x00008000 /* set if we want to have the same parent as the cloner */
-	CLONE_THREAD         uintptr = 0x00010000 /* Same thread group? */
-	CLONE_NEWNS          uintptr = 0x00020000 /* New mount namespace group */
-	CLONE_SYSVSEM        uintptr = 0x00040000 /* share system V SEM_UNDO semantics */
-	CLONE_SETTLS         uintptr = 0x00080000 /* create a new TLS for the child */
-	CLONE_PARENT_SETTID  uintptr = 0x00100000 /* set the TID in the parent */
-	CLONE_CHILD_CLEARTID uintptr = 0x00200000 /* clear the TID in the child */
-	CLONE_DETACHED       uintptr = 0x00400000 /* Unused, ignored */
-	CLONE_UNTRACED       uintptr = 0x00800000 /* set if the tracing process can't force CLONE_PTRACE on this clone */
-	CLONE_CHILD_SETTID   uintptr = 0x01000000 /* set the TID in the child */
-	CLONE_NEWCGROUP      uintptr = 0x02000000 /* New cgroup namespace */
-	CLONE_NEWUTS         uintptr = 0x04000000 /* New utsname namespace */
-	CLONE_NEWIPC         uintptr = 0x08000000 /* New ipc namespace */
-	CLONE_NEWUSER        uintptr = 0x10000000 /* New user namespace */
-	CLONE_NEWPID         uintptr = 0x20000000 /* New pid namespace */
-	CLONE_NEWNET         uintptr = 0x40000000 /* New network namespace */
-	CLONE_IO             uintptr = 0x80000000 /* Clone io context */
+	CLONE_VM             uint64 = 0x00000100 /* set if VM shared between processes */
+	CLONE_FS             uint64 = 0x00000200 /* set if fs info shared between processes */
+	CLONE_FILES          uint64 = 0x00000400 /* set if open files shared between processes */
+	CLONE_SIGHAND        uint64 = 0x00000800 /* set if signal handlers and blocked signals shared */
+	CLONE_PIDFD          uint64 = 0x00001000 /* set if a pidfd should be placed in parent */
+	CLONE_PTRACE         uint64 = 0x00002000 /* set if we want to let tracing continue on the child too */
+	CLONE_VFORK          uint64 = 0x00004000 /* set if the parent wants the child to wake it up on mm_release */
+	CLONE_PARENT         uint64 = 0x00008000 /* set if we want to have the same parent as the cloner */
+	CLONE_THREAD         uint64 = 0x00010000 /* Same thread group? */
+	CLONE_NEWNS          uint64 = 0x00020000 /* New mount namespace group */
+	CLONE_SYSVSEM        uint64 = 0x00040000 /* share system V SEM_UNDO semantics */
+	CLONE_SETTLS         uint64 = 0x00080000 /* create a new TLS for the child */
+	CLONE_PARENT_SETTID  uint64 = 0x00100000 /* set the TID in the parent */
+	CLONE_CHILD_CLEARTID uint64 = 0x00200000 /* clear the TID in the child */
+	CLONE_DETACHED       uint64 = 0x00400000 /* Unused, ignored */
+	CLONE_UNTRACED       uint64 = 0x00800000 /* set if the tracing process can't force CLONE_PTRACE on this clone */
+	CLONE_CHILD_SETTID   uint64 = 0x01000000 /* set the TID in the child */
+	CLONE_NEWCGROUP      uint64 = 0x02000000 /* New cgroup namespace */
+	CLONE_NEWUTS         uint64 = 0x04000000 /* New utsname namespace */
+	CLONE_NEWIPC         uint64 = 0x08000000 /* New ipc namespace */
+	CLONE_NEWUSER        uint64 = 0x10000000 /* New user namespace */
+	CLONE_NEWPID         uint64 = 0x20000000 /* New pid namespace */
+	CLONE_NEWNET         uint64 = 0x40000000 /* New network namespace */
+	CLONE_IO             uint64 = 0x80000000 /* Clone io context */
 )
 
 var (
@@ -290,27 +290,23 @@ func Chdir(dir string) (err syscall.Errno) {
 	if len(dir) == 0 {
 		return syscall.Errno(syscall.EINVAL)
 	}
-
 	dirp, e := syscall.BytePtrFromString(dir)
 	if e != nil {
 		log.Fatal("Error converting directory path to pointer")
 	}
 	_, _, error := syscall.RawSyscall(CHDIR, uintptr(unsafe.Pointer(dirp)), 0, 0)
-
 	slog.Debug("Chdir returns ", "error", error)
 	return error
 
 }
 
 // Disassociate parts of the process context
-func Unshare(flags uintptr) (err syscall.Errno) {
+func Unshare(flags uint64) (err syscall.Errno) {
 	slog.Debug("Unshare", "pid", os.Getpid(), "user", os.Geteuid(), "flags", flags)
 	if flags == 0 {
 		return
 	}
-
-	_, _, error := syscall.RawSyscall(UNSHARE, flags, 0, 0)
-
+	_, _, error := syscall.RawSyscall(UNSHARE, uintptr(flags), 0, 0)
 	slog.Debug("Unshare returns ", "error", error)
 	return error
 
