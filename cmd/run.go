@@ -118,7 +118,7 @@ func setContainer(image, base_path string) (*Container, error) {
 func runFork(base_path, image string, args []string) (int, syscall.Errno) {
 	slog.Debug("runFork", "base_path", base_path, "image", image, "args", args)
 	cargs := CloneArgs{
-		flags: CLONE_VFORK | CLONE_FILES | CLONE_NEWPID,
+		flags: CLONE_VFORK | CLONE_FILES | CLONE_NEWPID | CLONE_NEWNET,
 	}
 	pid, err := Fork(&cargs)
 	if err != 0 {
