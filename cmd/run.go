@@ -109,6 +109,19 @@ func setContainer(image, base_path string) (*Container, error) {
 	return con, nil
 }
 
+func prepareCgroup(conID string, cArgs *CloneArgs) error {
+	baseCgroupPath := "/sys/fs/cgroup/cpu/rocked/"
+	baseContainerCgroupPath := baseCgroupPath + conID
+	os.MkdirAll(baseContainerCgroupPath, 0770)
+	cgroupControl, err := os.Open(baseContainerCgroupPath)
+	if err != nil {
+		return err
+	}
+	cArgs.cgroup = uint64(cgroupControl.Fd())
+	return nil
+
+}
+
 // This function should basically do all the work for the child process.
 // It should not be able to return, but only execute the process invoked.
 //
@@ -117,8 +130,18 @@ func setContainer(image, base_path string) (*Container, error) {
 //go:nocheckptr
 func runFork(base_path, image string, args []string) (int, syscall.Errno) {
 	slog.Debug("runFork", "base_path", base_path, "image", image, "args", args)
+	// Untar the container image into a predefined root
+	// For now let's use hardocded paths
+	con, errc := setContainer(image, base_path)
+	if errc != nil {
+		log.Fatal("Error trying to setup container ", ": ", errc)
+	}
 	cargs := CloneArgs{
-		flags: CLONE_VFORK | CLONE_FILES | CLONE_NEWPID | CLONE_NEWNET,
+		flags: CLONE_VFORK | CLONE_FILES | CLONE_NEWPID | CLONE_NEWNET | CLONE_INTO_CGROUP,
+	}
+	errCgroup := prepareCgroup(con.id, &cargs)
+	if errCgroup != nil {
+		log.Fatal("Error while setting up cgroups: ", errCgroup)
 	}
 	pid, err := Fork(&cargs)
 	if err != 0 {
@@ -132,12 +155,6 @@ func runFork(base_path, image string, args []string) (int, syscall.Errno) {
 
 	slog.Debug("Child", "pid", pid, "pid thread", os.Getpid(), "pid parent", os.Getppid())
 	slog.Debug("Child", "exec", args[0], "options", args)
-	// Untar the container image into a predefined root
-	// For now let's use hardocded paths
-	con, errc := setContainer(image, base_path)
-	if errc != nil {
-		log.Fatal("Error trying to setup container ", ": ", errc)
-	}
 
 	err = Unshare(CLONE_NEWNS | CLONE_NEWUTS)
 	if err != 0 {
