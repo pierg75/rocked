@@ -11,7 +11,6 @@ import (
 	"syscall"
 
 	"log/slog"
-	"rocked/utils"
 
 	"github.com/spf13/cobra"
 )
@@ -91,37 +90,6 @@ func copy(src, dst string) (int64, error) {
 	return nBytes, err
 }
 
-func setContainer(image, base_path string) (*Container, error) {
-	slog.Debug("setContainert", "image", image, "base_path", base_path)
-	con := NewContainer(base_path)
-	var defaultSourceContainersImages string = "blobs/container_images/" + image + ".tar"
-	utils.ExtractImage(defaultSourceContainersImages, con.Path)
-	errcon := con.LoadConfigJson()
-	if errcon != nil {
-		return nil, errcon
-	}
-	slog.Debug("setContainert", "Manifests", con.Index.Manifests)
-	con.ExpandAllManifest(con.Path)
-	// Create the necessary directories
-	os.MkdirAll(con.Path+"/overlay/work", 0770)
-	os.MkdirAll(con.Path+"/overlay/upper", 0770)
-	os.MkdirAll(con.Path+"/overlay/merge", 0770)
-	return con, nil
-}
-
-func prepareCgroup(conID string, cArgs *CloneArgs) error {
-	baseCgroupPath := "/sys/fs/cgroup/cpu/rocked/"
-	baseContainerCgroupPath := baseCgroupPath + conID
-	os.MkdirAll(baseContainerCgroupPath, 0770)
-	cgroupControl, err := os.Open(baseContainerCgroupPath)
-	if err != nil {
-		return err
-	}
-	cArgs.cgroup = uint64(cgroupControl.Fd())
-	return nil
-
-}
-
 // This function should basically do all the work for the child process.
 // It should not be able to return, but only execute the process invoked.
 //
@@ -132,14 +100,14 @@ func runFork(base_path, image string, args []string) (int, syscall.Errno) {
 	slog.Debug("runFork", "base_path", base_path, "image", image, "args", args)
 	// Untar the container image into a predefined root
 	// For now let's use hardocded paths
-	con, errc := setContainer(image, base_path)
+	con, errc := SetContainer(image, base_path)
 	if errc != nil {
 		log.Fatal("Error trying to setup container ", ": ", errc)
 	}
 	cargs := CloneArgs{
 		flags: CLONE_VFORK | CLONE_FILES | CLONE_NEWPID | CLONE_NEWNET | CLONE_INTO_CGROUP,
 	}
-	errCgroup := prepareCgroup(con.id, &cargs)
+	errCgroup := PrepareCgroup(con.id, &cargs)
 	if errCgroup != nil {
 		log.Fatal("Error while setting up cgroups: ", errCgroup)
 	}
