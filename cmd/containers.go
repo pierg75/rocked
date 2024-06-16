@@ -186,11 +186,10 @@ func (c *Container) ExpandAllManifest(defaultContainerImage string) error {
 	return nil
 }
 
-func (c *Container) GetDigestPath() {
+func (c *Container) GetDigestPath() {}
 
-}
-
-func createOverlayDirs(path string) error {
+// Create the necessary directories (work, upper and merge) in <path>
+func CreateOverlayDirs(path string) error {
 	slog.Debug("createOverlayDirs", "path", path)
 	for _, dir := range []string{"work", "upper", "merge"} {
 		err := os.MkdirAll(path+"/overlay/"+dir, 0770)
@@ -213,50 +212,9 @@ func SetContainer(image, base_path string) (*Container, error) {
 	}
 	slog.Debug("setContainert", "Manifests", con.Index.Manifests)
 	con.ExpandAllManifest(con.Path)
-	err := createOverlayDirs(con.Path)
+	err := CreateOverlayDirs(con.Path)
 	if err != nil {
 		return nil, err
 	}
 	return con, nil
-}
-
-func PrepareCgroup(conID string, cArgs *CloneArgs) error {
-	slog.Debug("prepareCgroup", "conID", conID, "cArgs", cArgs)
-	baseCgroupPath := "/sys/fs/cgroup/rocked/"
-	os.MkdirAll(baseCgroupPath, 0770)
-
-	baseControllers := []string{"+cpu", "+io", "+memory", "+pids"}
-	fullPath := baseCgroupPath + "cgroup.subtree_control"
-	ctrlf, err := os.OpenFile(fullPath, os.O_RDWR, 0644)
-	if err != nil {
-		log.Fatal("Error opening the controller ", fullPath, ": ", err)
-	}
-	defer ctrlf.Close()
-	for _, ctrl := range baseControllers {
-		_, err = ctrlf.Write([]byte(ctrl))
-		if err != nil {
-			log.Fatal("Error writing the controller ", fullPath, ": ", err)
-		}
-
-	}
-	baseContainerCgroupPath := baseCgroupPath + conID
-	os.MkdirAll(baseContainerCgroupPath, 0770)
-	slog.Debug("prepareCgroup", "baseContainerCgroupPath", baseContainerCgroupPath)
-	cgroupControl, err := os.Open(baseContainerCgroupPath)
-	if err != nil {
-		return err
-	}
-	cArgs.cgroup = uint64(cgroupControl.Fd())
-	// Let's try to limit the cpu
-	cpuMax, err := os.OpenFile(baseContainerCgroupPath+"/cpu.max", os.O_RDWR, 0644)
-	if err != nil {
-		log.Fatal("Error opening the cpu.max ", fullPath, ": ", err)
-	}
-	defer cpuMax.Close()
-	_, err = cpuMax.Write([]byte("200000 1000000"))
-	if err != nil {
-		log.Fatal("Error writing into cpu.max: ", err)
-	}
-	slog.Debug("prepareCgroup", "returning", nil)
-	return nil
 }

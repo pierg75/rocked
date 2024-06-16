@@ -56,7 +56,7 @@ func TestChrootMount(t *testing.T) {
 	t.Cleanup(func() {
 		cmd.Umount(dir+"/proc", 0)
 	})
-	err := cmd.Mount("proc", target, "proc", 0)
+	err := cmd.Mount("proc", target, "proc", 0, "")
 	if err != 0 {
 		t.Fatalf("Error mounting proc on the directory %v: %v", target, err)
 	}
@@ -73,7 +73,7 @@ func TestMountUmountProc(t *testing.T) {
 		cmd.Umount(dir+"/proc", 0)
 	})
 	os.Mkdir(dir+"/proc", 777)
-	err := cmd.Mount("proc", dir+"/proc", "proc", 0)
+	err := cmd.Mount("proc", dir+"/proc", "proc", 0, "")
 	if err != 0 {
 		t.Fatalf("Error mounting proc on the directory %v: %v", target, err)
 	}
@@ -113,7 +113,7 @@ func TestPivotRoot(t *testing.T) {
 	}
 	// This is to temporally have a mountpoint for pivot_root
 	// MS_BIND == 4096
-	err = cmd.Mount(dir, dir, "", 4096)
+	err = cmd.Mount(dir, dir, "", 4096, "")
 	if err != 0 {
 		t.Fatal("Error bind mount ", dir, "on ", dir, ": ", err)
 	}

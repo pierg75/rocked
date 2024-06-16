@@ -107,10 +107,24 @@ func runFork(base_path, image string, args []string) (int, syscall.Errno) {
 	cargs := CloneArgs{
 		flags: CLONE_VFORK | CLONE_FILES | CLONE_NEWPID | CLONE_NEWNET | CLONE_INTO_CGROUP,
 	}
-	errCgroup := PrepareCgroup(con.id, &cargs)
-	if errCgroup != nil {
-		log.Fatal("Error while setting up cgroups: ", errCgroup)
+	slog.Debug("runFork", "base_path", base_path, "image", image, "cargs flags", cargs.flags, "cargs cg fd", cargs.cgroup)
+	cgroup, errCG := PrepareCgroup(con, &cargs)
+	if errCG != nil {
+		log.Fatal("Error while setting up cgroups: ", "id", cgroup.Id, "err", errCG)
 	}
+	// We need now to get the os.File reference to get then a file descriptor
+	// and to pass this to the clone3 syscall
+	// This is necessary to avoid the file closure too early and getting EBAFD
+	// from clone3.
+	// Set also the limits at this stage.
+	cgFile, errfd := cgroup.GetCGFd()
+	if errfd != nil {
+		log.Fatal("Error while getting cgroup fd ", "id", cgroup.Id, "err", errfd)
+	}
+	cargs.cgroup = uint64(cgFile.Fd())
+	cgroup.SetCGLimits()
+	defer cgFile.Fd()
+	// Let's create the child process
 	pid, err := Fork(&cargs)
 	if err != 0 {
 		fmt.Printf("Error forking: %v", int(err))
