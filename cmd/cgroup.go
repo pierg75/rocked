@@ -3,6 +3,7 @@ package cmd
 import (
 	"log"
 	"os"
+	"strconv"
 
 	"log/slog"
 )
@@ -43,6 +44,7 @@ func (c *Cgroup) CreateDirs() error {
 	return os.MkdirAll(c.path, 0770)
 }
 
+// Make sure the subtrees can use the cpu, io, memory and pids controllers
 func (c *Cgroup) SetControllers() error {
 	controlPath := c.path + "cgroup.subtree_control"
 	ctrlf, err := os.OpenFile(controlPath, os.O_RDWR, 0644)
@@ -62,6 +64,7 @@ func (c *Cgroup) SetControllers() error {
 	return nil
 }
 
+// Creates the container cgroup directory
 func (c *Cgroup) CreateConCgroup() error {
 	slog.Debug("Cgroup CreateConCgroup", "CgroupConPath", c.CgroupConPath)
 	err := os.MkdirAll(c.CgroupConPath, 0770)
@@ -72,6 +75,7 @@ func (c *Cgroup) CreateConCgroup() error {
 	return nil
 }
 
+// Return the file reference to be later used with the clone3 syscall
 func (c *Cgroup) GetCGFd() (*os.File, error) {
 	cgroupControlFile, err := os.Open(c.CgroupConPath)
 	if err != nil {
@@ -81,16 +85,14 @@ func (c *Cgroup) GetCGFd() (*os.File, error) {
 	return cgroupControlFile, nil
 }
 
+// Sets container limits. For now this is limited to the cpu and memory
 func (c *Cgroup) SetCGLimits() error {
-	cpuMax, err := os.OpenFile(c.CgroupConPath+"/cpu.max", os.O_RDWR, 0644)
+	err := c.setCgroupMaxLimit("cpu", "200000 1000000")
 	if err != nil {
-		slog.Debug("Cgroup SetCGLimits error opening cpu.mx", "CgroupConPath", c.CgroupConPath, "err", err)
 		return err
 	}
-	defer cpuMax.Close()
-	_, err = cpuMax.Write([]byte("200000 1000000"))
+	err = c.setCgroupMaxLimit("memory", strconv.Itoa(1*1024*1024*1024))
 	if err != nil {
-		slog.Debug("Cgroup SetCGLimits error writing cpu.mx", "CgroupConPath", c.CgroupConPath, "err", err)
 		return err
 	}
 	return nil
@@ -109,4 +111,21 @@ func PrepareCgroup(con *Container, cArgs *CloneArgs) (*Cgroup, error) {
 	}
 	slog.Debug("prepareCgroup", "returning", nil)
 	return cg, nil
+}
+
+// Set a controller max setting.
+// Note that some controllers take a single parameter while some take more
+func (c *Cgroup) setCgroupMaxLimit(controller, setting string) error {
+	ctrlMax, err := os.OpenFile(c.CgroupConPath+"/"+controller+".max", os.O_RDWR, 0644)
+	if err != nil {
+		slog.Debug("Cgroup SetCGLimits error opening", "controller", controller, "CgroupConPath", c.CgroupConPath, "err", err)
+		return err
+	}
+	defer ctrlMax.Close()
+	_, err = ctrlMax.Write([]byte(setting))
+	if err != nil {
+		slog.Debug("Cgroup SetCGLimits error writing", "controller", controller, "CgroupConPath", c.CgroupConPath, "err", err)
+		return err
+	}
+	return nil
 }
