@@ -17,7 +17,7 @@ type Cgroup struct {
 	Id            string
 	path          string
 	CgroupConPath string
-	CpuLimit      int
+	CpuLimit      string
 	MemLimit      int
 }
 
@@ -27,8 +27,8 @@ func NewCgroup(id string) *Cgroup {
 		Id:            id,
 		path:          BASE_CG_PATH,
 		CgroupConPath: BASE_CG_PATH + id,
-		CpuLimit:      200000,
-		MemLimit:      200000,
+		CpuLimit:      "200000 1000000",
+		MemLimit:      1 * 1024 * 1024 * 1024, // 1GB
 	}
 }
 
@@ -87,30 +87,15 @@ func (c *Cgroup) GetCGFd() (*os.File, error) {
 
 // Sets container limits. For now this is limited to the cpu and memory
 func (c *Cgroup) SetCGLimits() error {
-	err := c.setCgroupMaxLimit("cpu", "200000 1000000")
+	err := c.setCgroupMaxLimit("cpu", c.CpuLimit)
 	if err != nil {
 		return err
 	}
-	err = c.setCgroupMaxLimit("memory", strconv.Itoa(1*1024*1024*1024))
+	err = c.setCgroupMaxLimit("memory", strconv.Itoa(c.MemLimit))
 	if err != nil {
 		return err
 	}
 	return nil
-}
-
-func PrepareCgroup(con *Container, cArgs *CloneArgs) (*Cgroup, error) {
-	slog.Debug("prepareCgroup", "ID", con.id, "cArgs", cArgs)
-	cg := NewCgroup(con.id)
-	err := cg.SetControllers()
-	if err != nil {
-		return nil, err
-	}
-	err = cg.CreateConCgroup()
-	if err != nil {
-		return nil, err
-	}
-	slog.Debug("prepareCgroup", "returning", nil)
-	return cg, nil
 }
 
 // Set a controller max setting.
@@ -128,4 +113,20 @@ func (c *Cgroup) setCgroupMaxLimit(controller, setting string) error {
 		return err
 	}
 	return nil
+}
+
+// Create a new cgroup, sets the controllers and create the necessary directories.
+func PrepareCgroup(con *Container, cArgs *CloneArgs) (*Cgroup, error) {
+	slog.Debug("prepareCgroup", "ID", con.id, "cArgs", cArgs)
+	cg := NewCgroup(con.id)
+	err := cg.SetControllers()
+	if err != nil {
+		return nil, err
+	}
+	err = cg.CreateConCgroup()
+	if err != nil {
+		return nil, err
+	}
+	slog.Debug("prepareCgroup", "returning", nil)
+	return cg, nil
 }
