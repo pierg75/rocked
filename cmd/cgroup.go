@@ -1,7 +1,6 @@
 package cmd
 
 import (
-	"log"
 	"os"
 	"strconv"
 
@@ -40,32 +39,19 @@ func (c *Cgroup) SetPath(path string) {
 	c.path = path
 }
 
-func (c *Cgroup) CreateDirs() error {
-	return os.MkdirAll(c.path, 0770)
+func (c *Cgroup) CreateBaseDir() error {
+	slog.Debug("Cgroup CreateBaseDir", "path", c.path)
+	return os.MkdirAll(c.path, 0777)
 }
 
 // Make sure the subtrees can use the cpu, io, memory and pids controllers
-func (c *Cgroup) SetControllers() error {
-	controlPath := c.path + "cgroup.subtree_control"
-	ctrlf, err := os.OpenFile(controlPath, os.O_RDWR, 0644)
-	if err != nil {
-		slog.Debug("Cgroup SetControllers error opening the subtree_control file", "err", err)
-		return err
-	}
-	defer ctrlf.Close()
-	for _, ctrl := range BASE_CG_CONTROLLERS {
-		_, err = ctrlf.Write([]byte("+" + ctrl))
-		if err != nil {
-			log.Fatal("Error writing the controller ", controlPath, ": ", err)
-			slog.Debug("Cgroup SetControllers error writing to the subtree_control file", "ctrl", ctrl, "err", err)
-			return err
-		}
-	}
-	return nil
+func (c *Cgroup) SetBaseControllers() error {
+	slog.Debug("Cgroup SetControllers", "path", c.path)
+	return enableControllers(nil, c.path)
 }
 
-// Creates the container cgroup directory
-func (c *Cgroup) CreateConCgroup() error {
+// Creates the container ID cgroup directory
+func (c *Cgroup) CreateConIDCgroup() error {
 	slog.Debug("Cgroup CreateConCgroup", "CgroupConPath", c.CgroupConPath)
 	err := os.MkdirAll(c.CgroupConPath, 0770)
 	if err != nil {
@@ -77,6 +63,7 @@ func (c *Cgroup) CreateConCgroup() error {
 
 // Return the file reference to be later used with the clone3 syscall
 func (c *Cgroup) GetCGFd() (*os.File, error) {
+	slog.Debug("Cgroup GetCGFd", "CgroupConPath", c.CgroupConPath)
 	cgroupControlFile, err := os.Open(c.CgroupConPath)
 	if err != nil {
 		slog.Debug("Cgroup GetCGFd error opening Cgroup dir", "baseContainerCgroupPath", c.CgroupConPath, "err", err)
@@ -115,15 +102,46 @@ func (c *Cgroup) setCgroupMaxLimit(controller, setting string) error {
 	return nil
 }
 
+// Enable some controllers into the cgroup
+// If no controllers are passed, it will use the BASE_CG_CONTROLLERS.
+// If no cgrou path is passed, then it will use the BASE_CG_PATH
+func enableControllers(ctrls []string, cgroupPath string) error {
+	if len(ctrls) == 0 {
+		ctrls = BASE_CG_CONTROLLERS
+	}
+	if len(cgroupPath) == 0 {
+		cgroupPath = BASE_CG_PATH
+	}
+	controlPath := cgroupPath + "cgroup.subtree_control"
+	ctrlf, err := os.OpenFile(controlPath, os.O_RDWR, 0644)
+	if err != nil {
+		slog.Debug("Cgroup SetControllers error opening the subtree_control file", "err", err)
+		return err
+	}
+	for _, ctrl := range ctrls {
+		_, err = ctrlf.Write([]byte("+" + ctrl))
+		if err != nil {
+			slog.Debug("Cgroup SetControllers error writing to the subtree_control file", "controlPath", controlPath, "ctrl", ctrl, "err", err)
+			return err
+		}
+	}
+	defer ctrlf.Close()
+	return nil
+}
+
 // Create a new cgroup, sets the controllers and create the necessary directories.
 func PrepareCgroup(con *Container, cArgs *CloneArgs) (*Cgroup, error) {
 	slog.Debug("prepareCgroup", "ID", con.id, "cArgs", cArgs)
 	cg := NewCgroup(con.id)
-	err := cg.SetControllers()
+	err := cg.CreateBaseDir()
 	if err != nil {
 		return nil, err
 	}
-	err = cg.CreateConCgroup()
+	err = cg.SetBaseControllers()
+	if err != nil {
+		return nil, err
+	}
+	err = cg.CreateConIDCgroup()
 	if err != nil {
 		return nil, err
 	}

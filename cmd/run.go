@@ -108,6 +108,13 @@ func runFork(base_path, image string, args []string) (int, syscall.Errno) {
 		flags: CLONE_VFORK | CLONE_FILES | CLONE_NEWPID | CLONE_NEWNET | CLONE_INTO_CGROUP,
 	}
 	slog.Debug("runFork", "base_path", base_path, "image", image, "cargs flags", cargs.flags, "cargs cg fd", cargs.cgroup)
+	// Before doing anything with the cgroups, let's make sure some controllers
+	// are enabled in the root cgroup
+	errctrl := enableControllers(nil, "/sys/fs/cgroup/")
+	if errctrl != nil {
+		fmt.Printf("Error enabling controllers: %v", errctrl)
+		return -1, syscall.EIO
+	}
 	cgroup, errCG := PrepareCgroup(con, &cargs)
 	if errCG != nil {
 		log.Fatal("Error while setting up cgroups: ", "id", cgroup.Id, "err", errCG)
