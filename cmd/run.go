@@ -8,6 +8,7 @@ import (
 	"io"
 	"log"
 	"os"
+	"strconv"
 	"syscall"
 
 	"log/slog"
@@ -20,6 +21,12 @@ var (
 	image        string
 	base_path    string = "/tmp/containers/"
 )
+
+type IDmapping struct {
+	InsideID  int
+	OutsideID int
+	Len       int
+}
 
 func mount_virtfs(path string) syscall.Errno {
 	proc_target := path + "/proc"
@@ -88,6 +95,22 @@ func copy(src, dst string) (int64, error) {
 	defer destination.Close()
 	nBytes, err := io.Copy(destination, source)
 	return nBytes, err
+}
+
+func WriteMaps(dest string, mapping IDmapping) error {
+	idmapf, err := os.OpenFile(dest, os.O_RDWR|os.O_CREATE, 0644)
+	if err != nil {
+		slog.Debug("writeMaps error opening file", "dest", dest)
+		return err
+	}
+	m := strconv.Itoa(mapping.InsideID) + " " + strconv.Itoa(mapping.OutsideID) + " " + strconv.Itoa(mapping.Len)
+	_, err = idmapf.Write([]byte(m))
+	if err != nil {
+		slog.Debug("writeMaps error writing to ", "dest", dest, "m", m)
+		return err
+	}
+	defer idmapf.Close()
+	return nil
 }
 
 // This function should basically do all the work for the child process.
