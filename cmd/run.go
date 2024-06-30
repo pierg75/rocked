@@ -145,7 +145,7 @@ func runFork(base_path, image string, args []string) (int, syscall.Errno) {
 	slog.Debug("Child", "pid", pid, "pid thread", os.Getpid(), "pid parent", os.Getppid())
 	slog.Debug("Child", "exec", args[0], "options", args)
 
-	err = Unshare(CLONE_NEWNS | CLONE_NEWUTS)
+	err = Unshare(CLONE_NEWNS | CLONE_NEWUTS | CLONE_NEWUSER)
 	if err != 0 {
 		log.Fatal("Error trying to unshare ", ": ", err)
 	}
