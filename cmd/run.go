@@ -10,6 +10,7 @@ import (
 	"os"
 	"strconv"
 	"syscall"
+	"time"
 
 	"log/slog"
 
@@ -119,7 +120,7 @@ func WriteMaps(dest string, mapping IDmapping) error {
 //go:noinline
 //go:norace
 //go:nocheckptr
-func runFork(base_path, image string, args []string) (int, syscall.Errno) {
+func runFork1(base_path, image string, args []string) (int, syscall.Errno) {
 	slog.Debug("runFork", "base_path", base_path, "image", image, "args", args)
 	// Untar the container image into a predefined root
 	// For now let's use hardocded paths
@@ -128,7 +129,7 @@ func runFork(base_path, image string, args []string) (int, syscall.Errno) {
 		log.Fatal("Error trying to setup container ", ": ", errc)
 	}
 	cargs := CloneArgs{
-		flags: CLONE_VFORK | CLONE_FILES | CLONE_NEWPID | CLONE_NEWNET | CLONE_INTO_CGROUP,
+		flags: CLONE_VFORK | CLONE_FILES | CLONE_NEWPID | CLONE_NEWNET | CLONE_INTO_CGROUP | CLONE_NEWUSER,
 	}
 	slog.Debug("runFork", "base_path", base_path, "image", image, "cargs flags", cargs.flags, "cargs cg fd", cargs.cgroup)
 	// Before doing anything with the cgroups, let's make sure some controllers
@@ -165,10 +166,14 @@ func runFork(base_path, image string, args []string) (int, syscall.Errno) {
 		return int(pid), 0
 	}
 
+	// There should be some sort of communication between parent/child to
+	// continue with the execution after the parent has updated the maps.
+	// For now let's just wait a second
+	time.Sleep(time.Second * 1)
 	slog.Debug("Child", "pid", pid, "pid thread", os.Getpid(), "pid parent", os.Getppid())
 	slog.Debug("Child", "exec", args[0], "options", args)
 
-	err = Unshare(CLONE_NEWNS | CLONE_NEWUTS | CLONE_NEWUSER)
+	err = Unshare(CLONE_NEWNS | CLONE_NEWUTS)
 	if err != 0 {
 		log.Fatal("Error trying to unshare ", ": ", err)
 	}
@@ -180,6 +185,10 @@ func runFork(base_path, image string, args []string) (int, syscall.Errno) {
 	if err != 0 {
 		log.Println("Error trying to set the hostname ", err)
 	}
+	// There should be some sort of communication between parent/child to
+	// continue with the execution after the parent has updated the maps.
+	// For now let's just wait a second
+	time.Sleep(time.Second * 60)
 	mergepath := con.Path + "/overlay/merge"
 	err = Mount("overlay", mergepath, "overlay", MS_MGC_VAL, "lowerdir="+con.Path+"/image_root/,upperdir="+con.Path+"/overlay/upper,workdir="+con.Path+"/overlay/work")
 	if err != 0 {
@@ -210,7 +219,6 @@ func runFork(base_path, image string, args []string) (int, syscall.Errno) {
 	if err != 0 {
 		log.Fatal("Error trying to umount '.'", err)
 	}
-
 	// Exec
 	a := ExecArgs{
 		Exe:     args[0],
@@ -234,21 +242,19 @@ func runFork(base_path, image string, args []string) (int, syscall.Errno) {
 	return 0, 0
 }
 
-func run(args []string) {
+func runFork(args []string) int {
 	ppid := os.Getpid()
 	slog.Debug("Forking", "pid thread", ppid, "user", os.Getuid())
 	if len(args) == 0 {
 		fmt.Printf("You need to specify a program to run\n")
-		return
+		return -1
 	}
-	childpid, err := runFork(base_path, image, args)
+	childpid, err := runFork1(base_path, image, args)
 	if err != 0 {
 		log.Printf("There was an error while forking: %v", err)
+		return -1
 	}
-	// Wait
-	Wait(childpid)
-	log.Printf("%v exited\n", childpid)
-	return
+	return childpid
 }
 
 // runCmd represents the run command
@@ -256,7 +262,20 @@ var runCmd = &cobra.Command{
 	Use:   "run",
 	Short: "Runs a process",
 	Run: func(cmd *cobra.Command, args []string) {
-		run(args)
+		childpid := runFork(args)
+		// Write the id maps
+		childmap := IDmapping{
+			InsideID:  0,
+			OutsideID: 15603,
+			Len:       1,
+		}
+		err := WriteMaps("/proc/"+strconv.Itoa(childpid)+"/uid_map", childmap)
+		if err != nil {
+			log.Printf("There was an error when writing ID maps: %v", err)
+		}
+		// Wait
+		Wait(childpid)
+		log.Printf("%v exited\n", childpid)
 	},
 }
 
