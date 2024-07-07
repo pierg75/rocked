@@ -131,7 +131,7 @@ func runFork1(base_path, image string, args []string) (int, syscall.Errno) {
 	}
 	cargs := CloneArgs{
 		// flags: CLONE_VFORK | CLONE_FILES | CLONE_NEWPID | CLONE_NEWNET | CLONE_INTO_CGROUP | CLONE_NEWUSER,
-		flags: CLONE_NEWUTS | CLONE_INTO_CGROUP,
+		flags: CLONE_FILES | CLONE_NEWUTS | CLONE_INTO_CGROUP,
 	}
 	slog.Debug("runFork", "base_path", base_path, "image", image, "cargs flags", cargs.flags, "cargs cg fd", cargs.cgroup)
 	// Before doing anything with the cgroups, let's make sure some controllers
