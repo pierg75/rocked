@@ -173,7 +173,7 @@ func (c *Container) ExpandAllManifest(defaultContainerImage string) error {
 				//utils.Gunzip(layerPath, "/home/plambri/tempunzipped")
 				containerImageRoot := defaultContainerImage + "/image_root"
 				if !utils.PathExists(containerImageRoot) {
-					os.Mkdir(containerImageRoot, 0770)
+					os.Mkdir(containerImageRoot, 0777)
 				}
 				cmd := exec.Command("tar", "xvf", layerPath, "-C", containerImageRoot)
 				if err := cmd.Run(); err != nil {
@@ -192,7 +192,7 @@ func (c *Container) GetDigestPath() {}
 func CreateOverlayDirs(path string) error {
 	slog.Debug("createOverlayDirs", "path", path)
 	for _, dir := range []string{"work", "upper", "merge"} {
-		err := os.MkdirAll(path+"/overlay/"+dir, 0770)
+		err := os.MkdirAll(path+"/overlay/"+dir, 0777)
 		if err != nil {
 			slog.Debug("createOverlayDirs", "dir", dir, "error", err)
 			return err

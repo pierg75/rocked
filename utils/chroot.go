@@ -21,7 +21,7 @@ func CleanupChrootDir(path string, create bool) (err error) {
 	}
 	os.RemoveAll(path)
 	if create {
-		os.Mkdir(path, 0644)
+		os.Mkdir(path, 0777)
 	}
 	return nil
 }

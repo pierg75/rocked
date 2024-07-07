@@ -99,6 +99,7 @@ func copy(src, dst string) (int64, error) {
 }
 
 func WriteMaps(dest string, mapping IDmapping) error {
+	slog.Debug("WriteMaps", "dest", dest, "mapping", mapping)
 	idmapf, err := os.OpenFile(dest, os.O_RDWR|os.O_CREATE, 0644)
 	if err != nil {
 		slog.Debug("writeMaps error opening file", "dest", dest)
@@ -129,7 +130,8 @@ func runFork1(base_path, image string, args []string) (int, syscall.Errno) {
 		log.Fatal("Error trying to setup container ", ": ", errc)
 	}
 	cargs := CloneArgs{
-		flags: CLONE_VFORK | CLONE_FILES | CLONE_NEWPID | CLONE_NEWNET | CLONE_INTO_CGROUP | CLONE_NEWUSER,
+		// flags: CLONE_VFORK | CLONE_FILES | CLONE_NEWPID | CLONE_NEWNET | CLONE_INTO_CGROUP | CLONE_NEWUSER,
+		flags: CLONE_NEWUTS | CLONE_INTO_CGROUP,
 	}
 	slog.Debug("runFork", "base_path", base_path, "image", image, "cargs flags", cargs.flags, "cargs cg fd", cargs.cgroup)
 	// Before doing anything with the cgroups, let's make sure some controllers
@@ -153,7 +155,11 @@ func runFork1(base_path, image string, args []string) (int, syscall.Errno) {
 		log.Fatal("Error while getting cgroup fd ", "id", cgroup.Id, "err", errfd)
 	}
 	cargs.cgroup = uint64(cgFile.Fd())
-	cgroup.SetCGLimits()
+	errcg := cgroup.SetCGLimits()
+	if errcg != nil {
+		fmt.Printf("Error setting cgroup limits: %v", errcg)
+		return -1, syscall.EINVAL
+	}
 	defer cgFile.Fd()
 	// Let's create the child process
 	pid, err := Fork(&cargs)
@@ -166,14 +172,10 @@ func runFork1(base_path, image string, args []string) (int, syscall.Errno) {
 		return int(pid), 0
 	}
 
-	// There should be some sort of communication between parent/child to
-	// continue with the execution after the parent has updated the maps.
-	// For now let's just wait a second
-	time.Sleep(time.Second * 1)
 	slog.Debug("Child", "pid", pid, "pid thread", os.Getpid(), "pid parent", os.Getppid())
 	slog.Debug("Child", "exec", args[0], "options", args)
 
-	err = Unshare(CLONE_NEWNS | CLONE_NEWUTS)
+	err = Unshare(CLONE_NEWNS | CLONE_NEWNET | CLONE_NEWPID)
 	if err != 0 {
 		log.Fatal("Error trying to unshare ", ": ", err)
 	}
@@ -185,10 +187,6 @@ func runFork1(base_path, image string, args []string) (int, syscall.Errno) {
 	if err != 0 {
 		log.Println("Error trying to set the hostname ", err)
 	}
-	// There should be some sort of communication between parent/child to
-	// continue with the execution after the parent has updated the maps.
-	// For now let's just wait a second
-	time.Sleep(time.Second * 60)
 	mergepath := con.Path + "/overlay/merge"
 	err = Mount("overlay", mergepath, "overlay", MS_MGC_VAL, "lowerdir="+con.Path+"/image_root/,upperdir="+con.Path+"/overlay/upper,workdir="+con.Path+"/overlay/work")
 	if err != 0 {
@@ -201,7 +199,6 @@ func runFork1(base_path, image string, args []string) (int, syscall.Errno) {
 	//if err != 0 {
 	//	log.Fatal("Error bind mount ", path, "on ", path, ": ", err)
 	//}
-
 	err = mount_virtfs(mergepath)
 	defer umount_virtfs(mergepath)
 	if err != 0 {
@@ -219,6 +216,21 @@ func runFork1(base_path, image string, args []string) (int, syscall.Errno) {
 	if err != 0 {
 		log.Fatal("Error trying to umount '.'", err)
 	}
+	err = Unshare(CLONE_NEWUSER)
+	if err != 0 {
+		log.Fatal("Error trying to unshare ", ": ", err)
+	}
+	slog.Debug("Child", "pid", os.Getpid(), "user", os.Geteuid())
+	time.Sleep(time.Second * 30)
+	err = SetGid(0)
+	if err != 0 {
+		log.Fatal("Error trying to set GID 0: ", err)
+	}
+	err = SetUid(0)
+	if err != 0 {
+		log.Fatal("Error trying to set UID 0: ", err)
+	}
+	slog.Debug("Child", "pid", os.Getpid(), "user", os.Geteuid())
 	// Exec
 	a := ExecArgs{
 		Exe:     args[0],
@@ -266,12 +278,20 @@ var runCmd = &cobra.Command{
 		// Write the id maps
 		childmap := IDmapping{
 			InsideID:  0,
-			OutsideID: 15603,
+			OutsideID: 0,
 			Len:       1,
 		}
+		// There should be some sort of communication between parent/child to
+		// continue with the execution after the parent has updated the maps.
+		// For now let's just wait a second
+		time.Sleep(time.Second * 20)
 		err := WriteMaps("/proc/"+strconv.Itoa(childpid)+"/uid_map", childmap)
 		if err != nil {
-			log.Printf("There was an error when writing ID maps: %v", err)
+			log.Printf("There was an error when writing UID maps: %v", err)
+		}
+		err = WriteMaps("/proc/"+strconv.Itoa(childpid)+"/gid_map", childmap)
+		if err != nil {
+			log.Printf("There was an error when writing GID maps: %v", err)
 		}
 		// Wait
 		Wait(childpid)

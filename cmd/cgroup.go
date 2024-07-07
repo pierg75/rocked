@@ -53,7 +53,7 @@ func (c *Cgroup) SetBaseControllers() error {
 // Creates the container ID cgroup directory
 func (c *Cgroup) CreateConIDCgroup() error {
 	slog.Debug("Cgroup CreateConCgroup", "CgroupConPath", c.CgroupConPath)
-	err := os.MkdirAll(c.CgroupConPath, 0770)
+	err := os.MkdirAll(c.CgroupConPath, 0777)
 	if err != nil {
 		slog.Debug("Cgroup CreateConCgroup error creating the container Cgroup dir", "CgroupConPath", c.CgroupConPath, "err", err)
 		return err
@@ -74,6 +74,7 @@ func (c *Cgroup) GetCGFd() (*os.File, error) {
 
 // Sets container limits. For now this is limited to the cpu and memory
 func (c *Cgroup) SetCGLimits() error {
+	slog.Debug("Cgroup SetCGLimits")
 	err := c.setCgroupMaxLimit("cpu", c.CpuLimit)
 	if err != nil {
 		return err
@@ -88,6 +89,7 @@ func (c *Cgroup) SetCGLimits() error {
 // Set a controller max setting.
 // Note that some controllers take a single parameter while some take more
 func (c *Cgroup) setCgroupMaxLimit(controller, setting string) error {
+	slog.Debug("Cgroup setCgroupMaxLimit", "controller", controller, "setting", setting)
 	ctrlMax, err := os.OpenFile(c.CgroupConPath+"/"+controller+".max", os.O_RDWR, 0644)
 	if err != nil {
 		slog.Debug("Cgroup SetCGLimits error opening", "controller", controller, "CgroupConPath", c.CgroupConPath, "err", err)

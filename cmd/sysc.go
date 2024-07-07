@@ -17,6 +17,8 @@ var (
 	EXECVE      uintptr = 59
 	WAIT4       uintptr = 61
 	CHDIR       uintptr = 80
+	SETUID      uintptr = 105
+	SETGID      uintptr = 106
 	PIVOTROOT   uintptr = 155
 	CHROOT      uintptr = 161
 	MOUNT       uintptr = 165
@@ -346,5 +348,25 @@ func SetHostname(hostname string, size int) (err syscall.Errno) {
 		log.Fatal("Error converting hostname to pointer")
 	}
 	_, _, error := syscall.RawSyscall(SETHOSTNAME, uintptr(unsafe.Pointer(hostnamep)), uintptr(size), 0)
+	return error
+}
+
+// Set uid
+func SetUid(uid int) (err syscall.Errno) {
+	slog.Debug("SetUid", "pid", os.Getpid(), "user", os.Geteuid(), "uid", uid)
+	//if uid < 0 {
+	//	return syscall.EINVAL
+	//}
+	_, _, error := syscall.RawSyscall(SETUID, uintptr(uid), 0, 0)
+	return error
+}
+
+// Set gid
+func SetGid(gid int) (err syscall.Errno) {
+	slog.Debug("SetGid", "pid", os.Getpid(), "user", os.Geteuid(), "gid", gid)
+	//if uid < 0 {
+	//	return syscall.EINVAL
+	//}
+	_, _, error := syscall.RawSyscall(SETGID, uintptr(gid), 0, 0)
 	return error
 }
