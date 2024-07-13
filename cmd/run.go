@@ -276,6 +276,19 @@ var runCmd = &cobra.Command{
 	Use:   "run",
 	Short: "Runs a process",
 	Run: func(cmd *cobra.Command, args []string) {
+		// Check that the right images are passed
+		imageIsValid := func(image string) bool {
+			slog.Debug("imageIsValid", "image", image)
+			for _, v := range []string{"ubuntu", "fedora"} {
+				if image == v {
+					return true
+				}
+			}
+			return false
+		}
+		if !imageIsValid(image) {
+			log.Fatal(image, " is not a valid image (ubuntu|fedora are accepted for now)")
+		}
 		childpid := runFork(args)
 		// Write the id maps
 		childUidMap := IDmapping{
