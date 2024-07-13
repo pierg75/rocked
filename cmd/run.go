@@ -21,6 +21,8 @@ var (
 	envVariables []string
 	image        string
 	base_path    string = "/tmp/containers/"
+	uid          int
+	gid          int
 )
 
 type IDmapping struct {
@@ -221,12 +223,12 @@ func runFork1(base_path, image string, args []string) (int, syscall.Errno) {
 		log.Fatal("Error trying to unshare ", ": ", err)
 	}
 	slog.Debug("Child", "pid", os.Getpid(), "user", os.Geteuid())
-	time.Sleep(time.Second * 30)
-	err = SetGid(0)
+	time.Sleep(time.Second * 10)
+	err = SetGid(gid)
 	if err != 0 {
 		log.Fatal("Error trying to set GID 0: ", err)
 	}
-	err = SetUid(0)
+	err = SetUid(uid)
 	if err != 0 {
 		log.Fatal("Error trying to set UID 0: ", err)
 	}
@@ -276,20 +278,25 @@ var runCmd = &cobra.Command{
 	Run: func(cmd *cobra.Command, args []string) {
 		childpid := runFork(args)
 		// Write the id maps
-		childmap := IDmapping{
-			InsideID:  0,
+		childUidMap := IDmapping{
+			InsideID:  uid,
+			OutsideID: 0,
+			Len:       1,
+		}
+		childGidMap := IDmapping{
+			InsideID:  gid,
 			OutsideID: 0,
 			Len:       1,
 		}
 		// There should be some sort of communication between parent/child to
 		// continue with the execution after the parent has updated the maps.
 		// For now let's just wait a second
-		time.Sleep(time.Second * 20)
-		err := WriteMaps("/proc/"+strconv.Itoa(childpid)+"/uid_map", childmap)
+		time.Sleep(time.Second * 5)
+		err := WriteMaps("/proc/"+strconv.Itoa(childpid)+"/uid_map", childUidMap)
 		if err != nil {
 			log.Printf("There was an error when writing UID maps: %v", err)
 		}
-		err = WriteMaps("/proc/"+strconv.Itoa(childpid)+"/gid_map", childmap)
+		err = WriteMaps("/proc/"+strconv.Itoa(childpid)+"/gid_map", childGidMap)
 		if err != nil {
 			log.Printf("There was an error when writing GID maps: %v", err)
 		}
@@ -303,5 +310,7 @@ func init() {
 	rootCmd.AddCommand(runCmd)
 	runCmd.Flags().StringArrayVarP(&envVariables, "env", "e", nil, "Sets environment variables. It can be repeated")
 	runCmd.Flags().StringVarP(&image, "image", "i", "Fedora", "Use the container image")
+	runCmd.Flags().IntVarP(&uid, "uid", "u", 0, "User UID within the container (default 0)")
+	runCmd.Flags().IntVarP(&gid, "gid", "g", 0, "User GID within the container (default 0)")
 	runCmd.MarkFlagRequired("image")
 }
