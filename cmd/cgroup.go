@@ -66,7 +66,8 @@ func (c *Cgroup) CreateConIDCgroup() error {
 	return nil
 }
 
-// Return the file reference to be later used with the clone3 syscall
+// Return the file reference of the cgroup directory to be later used with the clone3 syscall
+// See man 2 clone3, CLONE_INTO_CGROUP
 func (c *Cgroup) GetCGFd() (*os.File, error) {
 	slog.Debug("Cgroup GetCGFd", "CgroupConPath", c.CgroupConPath)
 	cgroupControlFile, err := os.Open(c.CgroupConPath)
@@ -82,10 +83,12 @@ func (c *Cgroup) SetCGLimits() error {
 	slog.Debug("Cgroup SetCGLimits")
 	err := c.setCgroupMaxLimit("cpu", c.CpuLimit)
 	if err != nil {
+		slog.Debug("Cgroup SetCGLimits error setting cpu limits ", "limit", c.CpuLimit, "err", err)
 		return err
 	}
 	err = c.setCgroupMaxLimit("memory", strconv.Itoa(c.MemLimit))
 	if err != nil {
+		slog.Debug("Cgroup SetCGLimits error setting memory limits ", "limit", c.CpuLimit, "err", err)
 		return err
 	}
 	return nil
