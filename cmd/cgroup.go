@@ -41,7 +41,12 @@ func (c *Cgroup) SetPath(path string) {
 
 func (c *Cgroup) CreateBaseDir() error {
 	slog.Debug("Cgroup CreateBaseDir", "path", c.path)
-	return os.MkdirAll(c.path, 0777)
+	err := os.MkdirAll(c.path, 0777)
+	if err != nil {
+		slog.Debug("Cgroup CreateBaseDir error creating the container base dir", "base dir", c.path, "err", err)
+		return err
+	}
+	return nil
 }
 
 // Make sure the subtrees can use the cpu, io, memory and pids controllers
