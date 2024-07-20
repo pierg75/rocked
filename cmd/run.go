@@ -177,9 +177,9 @@ func runFork1(base_path, image string, args []string) (int, syscall.Errno) {
 	slog.Debug("Child", "pid", pid, "pid thread", os.Getpid(), "pid parent", os.Getppid())
 	slog.Debug("Child", "exec", args[0], "options", args)
 
-	err = Unshare(CLONE_NEWNS | CLONE_NEWNET | CLONE_NEWPID)
+	err = Unshare(CLONE_NEWNS | CLONE_NEWNET)
 	if err != 0 {
-		log.Fatal("Error trying to unshare ", ": ", err)
+		log.Fatal("Error trying to unshare NEWNS|NEWNET", ": ", err)
 	}
 	err = SetMount("/", MS_REC|MS_PRIVATE)
 	if err != 0 {
@@ -220,7 +220,11 @@ func runFork1(base_path, image string, args []string) (int, syscall.Errno) {
 	}
 	err = Unshare(CLONE_NEWUSER)
 	if err != 0 {
-		log.Fatal("Error trying to unshare ", ": ", err)
+		log.Fatal("Error trying to unshare NEWUSER", ": ", err)
+	}
+	err = Unshare(CLONE_NEWPID)
+	if err != 0 {
+		log.Fatal("Error trying to unshare NEWPID ", ": ", err)
 	}
 	slog.Debug("Child", "pid", os.Getpid(), "user", os.Geteuid())
 	time.Sleep(time.Second * 10)
