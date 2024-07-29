@@ -65,7 +65,10 @@ func Gunzip(archive, dest string) error {
 func ExtractImage(archive, dest string) error {
 	slog.Debug("ExtractImage", "archive", archive, "dest", dest)
 	if !PathExists(dest) {
-		os.MkdirAll(dest, 0777)
+		err := os.MkdirAll(dest, 0777)
+		if err != nil {
+			return err
+		}
 	}
 	reader, err := os.Open(archive)
 	if err != nil {
