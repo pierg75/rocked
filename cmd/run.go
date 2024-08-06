@@ -123,14 +123,8 @@ func WriteMaps(dest string, mapping IDmapping) error {
 //go:noinline
 //go:norace
 //go:nocheckptr
-func runFork1(base_path, image string, args []string) (int, syscall.Errno) {
+func runFork1(con *Container, image string, args []string) (int, syscall.Errno) {
 	slog.Debug("runFork", "base_path", base_path, "image", image, "args", args)
-	// Untar the container image into a predefined root
-	// For now let's use hardocded paths
-	con, errc := SetContainer(image, base_path)
-	if errc != nil {
-		log.Fatal("Error trying to setup container ", ": ", errc)
-	}
 	cargs := CloneArgs{
 		// flags: CLONE_VFORK | CLONE_FILES | CLONE_NEWPID | CLONE_NEWNET | CLONE_INTO_CGROUP | CLONE_NEWUSER,
 		flags: CLONE_FILES | CLONE_NEWUTS | CLONE_INTO_CGROUP,
@@ -250,13 +244,6 @@ func runFork1(base_path, image string, args []string) (int, syscall.Errno) {
 	if err != 0 {
 		log.Fatal("Error executing ", args[0], ": ", err)
 	}
-	// Clean up everything before returning
-	defer func() {
-		er := os.RemoveAll(con.Path)
-		if er != nil {
-			log.Println("Error removing ", con.Path)
-		}
-	}()
 	return 0, 0
 }
 
@@ -267,11 +254,24 @@ func runFork(args []string) int {
 		fmt.Printf("You need to specify a program to run\n")
 		return -1
 	}
-	childpid, err := runFork1(base_path, image, args)
+	// Untar the container image into a predefined root
+	// For now let's use hard-coded paths
+	con, errc := SetContainer(image, base_path)
+	if errc != nil {
+		log.Fatal("Error trying to setup container ", ": ", errc)
+	}
+	childpid, err := runFork1(con, image, args)
 	if err != 0 {
 		log.Printf("There was an error while forking: %v", err)
 		return -1
 	}
+	// Clean up everything before returning
+	defer func() {
+		er := os.RemoveAll(con.Path)
+		if er != nil {
+			log.Println("Error removing ", con.Path)
+		}
+	}()
 	return childpid
 }
 
